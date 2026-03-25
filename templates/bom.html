@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | BOM{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Structure</span>
+    <h1>BOM — {{ product.product_name }}</h1>
+    <p>Manage product materials, child products and manufacturing structure.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('products') }}" class="dashboard-btn secondary">Back to Products</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing product-form-card bom-form-shell">
+  <form method="POST" action="{{ url_for('add_bom_item', product_id=product.id) }}" class="order-form bom-clean-form">
+    <div class="form-grid form-grid-4 bom-form-grid">
+      <div class="form-group bom-select-group">
+        <label>Component Type</label>
+
+        <div class="custom-select" data-name="component_type" id="component-type-select">
+          <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select component type">
+            <span>Item</span>
+          </div>
+
+          <div class="custom-options">
+            <div class="custom-option selected" data-value="item">Item</div>
+            <div class="custom-option" data-value="product">Product</div>
+          </div>
+
+          <input type="hidden" id="component_type" name="component_type" value="item">
+        </div>
+      </div>
+
+      <div class="form-group bom-select-group" id="item-select-group">
+        <label>Item</label>
+
+        {% if items %}
+          <div class="custom-select" data-name="item_id">
+            <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select item">
+              <span>{{ items[0].item_code }} - {{ items[0].item_name }} ({{ items[0].measurement_unit }})</span>
+            </div>
+
+            <div class="custom-options">
+              {% for item in items %}
+                <div class="custom-option {% if loop.first %}selected{% endif %}" data-value="{{ item.id }}">
+                  {{ item.item_code }} - {{ item.item_name }} ({{ item.measurement_unit }})
+                </div>
+              {% endfor %}
+            </div>
+
+            <input type="hidden" id="item_id" name="item_id" value="{{ items[0].id }}" required>
+          </div>
+        {% else %}
+          <div class="custom-select">
+            <div class="custom-select-trigger is-disabled" aria-disabled="true">
+              <span>No items available</span>
+            </div>
+            <input type="hidden" id="item_id" name="item_id" value="" disabled>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group bom-select-group" id="product-select-group" style="display:none;">
+        <label>Product</label>
+
+        {% if child_products %}
+          <div class="custom-select" data-name="child_product_id">
+            <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select product">
+              <span>{{ child_products[0].product_code }} - {{ child_products[0].product_name }} ({{ child_products[0].measurement_unit }})</span>
+            </div>
+
+            <div class="custom-options">
+              {% for child_product in child_products %}
+                <div class="custom-option {% if loop.first %}selected{% endif %}" data-value="{{ child_product.id }}">
+                  {{ child_product.product_code }} - {{ child_product.product_name }} ({{ child_product.measurement_unit }})
+                </div>
+              {% endfor %}
+            </div>
+
+            <input type="hidden" id="child_product_id" name="child_product_id" value="{{ child_products[0].id }}">
+          </div>
+        {% else %}
+          <div class="custom-select">
+            <div class="custom-select-trigger is-disabled" aria-disabled="true">
+              <span>No products available</span>
+            </div>
+            <input type="hidden" id="child_product_id" name="child_product_id" value="" disabled>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group bom-quantity-group">
+        <label for="quantity" class="bom-field-label">Quantity</label>
+        <input type="number" step="0.01" id="quantity" name="quantity" required>
+      </div>
+
+      <div class="form-group bom-submit-group">
+        <label class="bom-submit-label">Action</label>
+        <button type="submit" class="dashboard-btn primary bom-submit-btn">Add BOM Component</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="dashboard-table-card">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Bill of materials</span>
+      <h4>BOM Components</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table product-flow-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Unit</th>
+          <th>Quantity</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if bom_items %}
+          {% for bom_item in bom_items %}
+            <tr>
+              <td data-label="Type">
+                {% if bom_item.component_type == "product" %}
+                  <span class="status-badge in-progress">Product</span>
+                {% else %}
+                  <span class="status-badge waiting">Item</span>
+                {% endif %}
+              </td>
+
+              <td data-label="Code"><strong>{{ bom_item.component_code }}</strong></td>
+              <td data-label="Name">{{ bom_item.component_name }}</td>
+              <td data-label="Unit">{{ bom_item.measurement_unit }}</td>
+              <td data-label="Quantity">{{ bom_item.quantity }}</td>
+
+              <td data-label="Actions" class="actions-cell product-actions-cell">
+                <form method="POST"
+                      action="{{ url_for('delete_bom_item', bom_id=bom_item.id) }}"
+                      class="inline-form"
+                      onsubmit="return confirm('Are you sure you want to delete this BOM component?');">
+                  <button type="submit" class="table-action-btn btn-delete action-btn-compact">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-table-message">No BOM components found.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function toggleBomComponentType() {
+  const componentTypeInput = document.getElementById("component_type");
+  const itemGroup = document.getElementById("item-select-group");
+  const productGroup = document.getElementById("product-select-group");
+  const itemInput = document.getElementById("item_id");
+  const productInput = document.getElementById("child_product_id");
+
+  if (!componentTypeInput || !itemGroup || !productGroup) return;
+
+  const componentType = componentTypeInput.value;
+
+  if (componentType === "product") {
+    itemGroup.style.display = "none";
+    productGroup.style.display = "";
+    if (itemInput) {
+      itemInput.removeAttribute("required");
+      itemInput.disabled = true;
+    }
+    if (productInput) {
+      productInput.setAttribute("required", "required");
+      productInput.disabled = false;
+    }
+  } else {
+    itemGroup.style.display = "";
+    productGroup.style.display = "none";
+    if (productInput) {
+      productInput.removeAttribute("required");
+      productInput.disabled = true;
+    }
+    if (itemInput) {
+      itemInput.setAttribute("required", "required");
+      itemInput.disabled = false;
+    }
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  toggleBomComponentType();
+
+  const componentTypeInput = document.getElementById("component_type");
+  if (componentTypeInput) {
+    componentTypeInput.addEventListener("change", toggleBomComponentType);
+  }
+
+  document.querySelectorAll('#component-type-select .custom-option').forEach(option => {
+    option.addEventListener("click", function () {
+      setTimeout(toggleBomComponentType, 0);
+    });
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% block title %}UMS | Transfers{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Logistics</span>
+    <h1>Product Transfers</h1>
+    <p>Move finished products out of stock, track where they went, and see live derived stock by destination.</p>
+  </div>
+</div>
+
+<div class="dashboard-stats section-spacing">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Destinations</span>
+    <strong>{{ stats.destination_count }}</strong>
+    <span class="stat-meta">Active destinations</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Transfers</span>
+    <strong>{{ stats.transfer_count }}</strong>
+    <span class="stat-meta">Filtered transfer records</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Qty Moved Out</span>
+    <strong>{{ stats.total_quantity }}</strong>
+    <span class="stat-meta">Filtered transferred quantity</span>
+  </div>
+</div>
+
+<div class="form-grid form-grid-2 section-spacing">
+  <div class="dashboard-form-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Outbound stock</span>
+        <h4>Create Transfer</h4>
+      </div>
+    </div>
+
+    {% if products and destinations %}
+      <form method="POST" action="{{ url_for('create_product_transfer') }}" class="order-form">
+        <div class="form-grid form-grid-2">
+          <div class="form-group form-group-full">
+            <label>Product</label>
+            <div class="custom-select" data-name="product_id" id="transferProductSelect">
+              <div class="custom-select-trigger" tabindex="0" role="button">
+                <span>Select product</span>
+              </div>
+
+              <div class="custom-options">
+                {% for product in products %}
+                  <div
+                    class="custom-option"
+                    data-value="{{ product.id }}"
+                    data-stock="{{ product.stock_quantity }}"
+                    data-unit="{{ product.measurement_unit }}"
+                  >
+                    {{ product.product_code }} — {{ product.product_name }} · Stock {{ product.stock_quantity }} {{ product.measurement_unit }}
+                  </div>
+                {% endfor %}
+              </div>
+
+              <input type="hidden" name="product_id" value="">
+            </div>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label>Destination</label>
+            <div class="custom-select" data-name="destination_id" id="transferDestinationSelect">
+              <div class="custom-select-trigger" tabindex="0" role="button">
+                <span>Select destination</span>
+              </div>
+
+              <div class="custom-options">
+                {% for destination in destinations %}
+                  <div class="custom-option" data-value="{{ destination.id }}">
+                    {{ destination.name }}{% if destination.destination_code %} — {{ destination.destination_code }}{% endif %}
+                  </div>
+                {% endfor %}
+              </div>
+
+              <input type="hidden" name="destination_id" value="">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="transfer_date">Transfer Date</label>
+            <input type="date" id="transfer_date" name="transfer_date" value="{{ today }}" required>
+          </div>
+
+          <div class="form-group">
+            <label for="quantity">Quantity</label>
+            <input type="number" step="0.01" min="0.01" id="quantity" name="quantity" required>
+          </div>
+
+          <div class="form-group form-group-full">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="4" placeholder="Optional note about this transfer"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="dashboard-btn primary">Create Transfer</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="empty-state-note">
+        {% if not products %}
+          No products available. Create products first.
+        {% elif not destinations %}
+          No destinations yet. Create a destination first.
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="dashboard-form-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Destinations</span>
+        <h4>New Destination</h4>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('create_stock_destination') }}" class="order-form">
+      <div class="form-grid form-grid-2">
+        <div class="form-group">
+          <label for="name">Destination Name</label>
+          <input type="text" id="name" name="name" required placeholder="Warehouse / Client / Site">
+        </div>
+
+        <div class="form-group">
+          <label for="destination_code">Destination Code</label>
+          <input type="text" id="destination_code" name="destination_code" placeholder="Optional code">
+        </div>
+
+        <div class="form-group form-group-full">
+          <label for="destination_notes">Notes</label>
+          <textarea id="destination_notes" name="notes" rows="4" placeholder="Optional notes"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="dashboard-btn secondary">Create Destination</button>
+      </div>
+    </form>
+
+    <div class="table-wrapper" style="margin-top: 18px;">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Code</th>
+            <th>Total Qty Received</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if destination_totals %}
+            {% for destination in destination_totals %}
+              <tr>
+                <td><strong>{{ destination.destination_name }}</strong></td>
+                <td>{{ destination.destination_code or '-' }}</td>
+                <td>{{ destination.total_qty }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="3" class="empty-table-message">No destinations yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Filters</span>
+      <h4>Filter Transfers</h4>
+    </div>
+  </div>
+
+  <form method="GET" class="order-form">
+    <div class="form-grid form-grid-4">
+      <div class="form-group">
+        <label>Product</label>
+        <div class="custom-select" data-name="product_id">
+          <div class="custom-select-trigger" tabindex="0" role="button">
+            <span>
+              {% if filters.product_id %}
+                {% set ns = namespace(name='Selected product') %}
+                {% for p in products %}
+                  {% if filters.product_id|string == p.id|string %}
+                    {% set ns.name = p.product_name %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.name }}
+              {% else %}
+                All products
+              {% endif %}
+            </span>
+          </div>
+          <div class="custom-options">
+            <div class="custom-option {% if not filters.product_id %}selected{% endif %}" data-value="">All products</div>
+            {% for p in products %}
+              <div class="custom-option {% if filters.product_id|string == p.id|string %}selected{% endif %}" data-value="{{ p.id }}">
+                {{ p.product_name }}
+              </div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="product_id" value="{{ filters.product_id or '' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Destination</label>
+        <div class="custom-select" data-name="destination_id">
+          <div class="custom-select-trigger" tabindex="0" role="button">
+            <span>
+              {% if filters.destination_id %}
+                {% set ns = namespace(name='Selected destination') %}
+                {% for d in destinations %}
+                  {% if filters.destination_id|string == d.id|string %}
+                    {% set ns.name = d.name %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.name }}
+              {% else %}
+                All destinations
+              {% endif %}
+            </span>
+          </div>
+          <div class="custom-options">
+            <div class="custom-option {% if not filters.destination_id %}selected{% endif %}" data-value="">All destinations</div>
+            {% for d in destinations %}
+              <div class="custom-option {% if filters.destination_id|string == d.id|string %}selected{% endif %}" data-value="{{ d.id }}">
+                {{ d.name }}
+              </div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="destination_id" value="{{ filters.destination_id or '' }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="date_from">From</label>
+        <input type="date" id="date_from" name="date_from" value="{{ filters.date_from or '' }}">
+      </div>
+
+      <div class="form-group">
+        <label for="date_to">To</label>
+        <input type="date" id="date_to" name="date_to" value="{{ filters.date_to or '' }}">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="dashboard-btn primary">Apply Filters</button>
+      <a href="{{ url_for('product_transfers') }}" class="dashboard-btn secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
+<div class="dashboard-table-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Destination stock</span>
+      <h4>Products Currently At Destinations</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>Destination</th>
+          <th>Product</th>
+          <th>Qty At Destination</th>
+          <th>Unit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if destination_stock %}
+          {% for row in destination_stock %}
+            <tr>
+              <td>
+                <strong>{{ row.destination_name }}</strong>
+                <div class="product-sub">{{ row.destination_code or '' }}</div>
+              </td>
+              <td>
+                <div class="product-cell">
+                  <strong>{{ row.product_name }}</strong>
+                  <span class="product-sub">{{ row.product_code }}</span>
+                </div>
+              </td>
+              <td>{{ row.qty_at_destination }}</td>
+              <td>{{ row.measurement_unit }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4" class="empty-table-message">No derived destination stock yet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="dashboard-table-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">History</span>
+      <h4>Outbound Transfers</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Product</th>
+          <th>Destination</th>
+          <th>Qty</th>
+          <th>Unit</th>
+          <th>Created By</th>
+          <th>Notes</th>
+          {% if has_permission_ui('manage_inventory') %}
+            <th>Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% if transfers %}
+          {% for transfer in transfers %}
+            <tr>
+              <td>{{ transfer.transfer_date }}</td>
+              <td>
+                <div class="product-cell">
+                  <strong>{{ transfer.product_name }}</strong>
+                  <span class="product-sub">{{ transfer.product_code }}</span>
+                </div>
+              </td>
+              <td>
+                <strong>{{ transfer.destination_name }}</strong>
+                <div class="product-sub">{{ transfer.destination_code or '' }}</div>
+              </td>
+              <td>{{ transfer.quantity }}</td>
+              <td>{{ transfer.measurement_unit }}</td>
+              <td>{{ transfer.created_by_name or '-' }}</td>
+              <td>{{ transfer.notes or '-' }}</td>
+
+              {% if has_permission_ui('manage_inventory') %}
+                <td class="actions-cell">
+                  <form
+                    method="POST"
+                    action="{{ url_for('undo_product_transfer', transfer_id=transfer.id) }}"
+                    class="inline-form"
+                    onsubmit="return confirm('Undo this transfer and restore product stock?');"
+                  >
+                    <button type="submit" class="table-action-btn btn-danger">Undo</button>
+                  </form>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{% if has_permission_ui('manage_inventory') %}8{% else %}7{% endif %}" class="empty-table-message">
+              No product transfers found.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

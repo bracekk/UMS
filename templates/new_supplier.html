@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | New Supplier{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Procurement</span>
+    <h1>New Supplier</h1>
+    <p>Create a supplier profile with contact and purchasing information.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('suppliers') }}" class="dashboard-btn secondary">Back to Suppliers</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Supplier Setup</span>
+      <h4>Create Supplier</h4>
+    </div>
+  </div>
+
+  <form method="POST" class="order-form procurement-form">
+    <div class="form-grid">
+      <div class="form-group floating-group">
+        <input type="text" id="name" name="name" placeholder=" " required>
+        <label for="name">Supplier Name</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="supplier_code" name="supplier_code" placeholder=" ">
+        <label for="supplier_code">Supplier Code</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="contact_person" name="contact_person" placeholder=" ">
+        <label for="contact_person">Contact Person</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="email" name="email" placeholder=" ">
+        <label for="email">Email</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="phone" name="phone" placeholder=" ">
+        <label for="phone">Phone</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="address" name="address" placeholder=" ">
+        <label for="address">Address</label>
+      </div>
+    </div>
+
+    <div class="procurement-form-section">
+      <div class="form-group floating-group">
+        <textarea id="notes" name="notes" rows="5" placeholder=" "></textarea>
+        <label for="notes">Notes</label>
+      </div>
+    </div>
+
+    <div class="form-actions procurement-form-actions">
+      <a href="{{ url_for('suppliers') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Create Supplier</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

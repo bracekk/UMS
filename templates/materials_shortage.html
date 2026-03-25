@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Shortages{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Procurement</span>
+    <h1>Shortages</h1>
+    <p>Items below minimum stock. Create purchase requests directly from shortage rows.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('export_shortages_excel') }}" class="dashboard-btn secondary">Export Excel</a>
+    <a href="{{ url_for('export_shortages_pdf') }}" class="dashboard-btn secondary">Export PDF</a>
+    <a href="{{ url_for('purchase_requests') }}" class="dashboard-btn secondary">View Requests</a>
+  </div>
+</div>
+
+<div class="dashboard-stats section-spacing">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Shortage Items</span>
+    <strong>{{ shortage_items|length }}</strong>
+    <span class="stat-meta">Below minimum stock</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">High Priority</span>
+    <strong>{{ shortage_items|length }}</strong>
+    <span class="stat-meta">Procurement candidates</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Auto Flow</span>
+    <strong>Ready</strong>
+    <span class="stat-meta">Create request from row</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Inventory Link</span>
+    <strong>Live</strong>
+    <span class="stat-meta">Reads real item stock</span>
+  </div>
+</div>
+
+<div class="dashboard-table-card section-spacing shortage-table-card">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Shortage Queue</span>
+      <h4>Items Below Minimum Stock</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Supplier</th>
+          <th>In Stock</th>
+          <th>Minimum</th>
+          <th>Required to Order</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if shortage_items %}
+          {% for item in shortage_items %}
+            <tr class="shortage-row">
+              <td data-label="Item">
+                <div class="product-cell">
+                  <strong>{{ item.item_code }}</strong>
+                  <span class="product-sub">{{ item.item_name }}</span>
+                </div>
+              </td>
+
+              <td data-label="Supplier">
+                {{ item.supplier_name if item.supplier_name else "—" }}
+              </td>
+
+              <td data-label="In Stock">
+                <span class="stock-badge danger">{{ item.stock_quantity }} {{ item.unit }}</span>
+              </td>
+
+              <td data-label="Minimum">
+                {{ item.min_stock }} {{ item.unit }}
+              </td>
+
+              <td data-label="Required to Order">
+                <span class="shortage-qty">{{ item.required_to_order }} {{ item.unit }}</span>
+              </td>
+
+              <td data-label="Actions">
+                <div class="actions-cell request-actions">
+                  <form method="POST" action="{{ url_for('create_request_from_shortage', item_id=item.id) }}" class="inline-action-form">
+                    <button type="submit" class="table-action-btn primary-action-btn">
+                      Create Request
+                    </button>
+                  </form>
+
+                  <a href="{{ url_for('edit_item', item_id=item.id) }}" class="table-action-btn">
+                    Edit Item
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-table-message">
+              No shortages right now.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

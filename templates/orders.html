@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}UMS | Orders{% endblock %}
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Orders</span>
+    <h1>Orders</h1>
+    <p>Manage and track all production orders with materials, shortages, jobs and total cost visibility.</p>
+  </div>
+  <div class="jobs-header-right">
+    <a href="{{ url_for('order_batches') }}" class="dashboard-btn secondary">Order Batches</a>
+    <a href="{{ url_for('new_order') }}" class="dashboard-btn primary">New Order</a>
+  </div>
+</div>
+
+<div class="filters-wrapper section-spacing">
+  <button type="button" class="filters-toggle-btn" aria-expanded="false">Filters</button>
+  <div class="filters-panel filters-collapsed">
+    <div class="dashboard-form-card jobs-filter-card">
+      <form method="GET" action="{{ url_for('orders') }}" class="order-form live-filter-form" data-target="#orders-results">
+        <div class="jobs-filter-grid jobs-filter-grid-compact">
+          <div class="form-group">
+            <label for="order_number">Order</label>
+            <input type="text" id="order_number" name="order_number" value="{{ filters.order_number }}" placeholder="Order number">
+          </div>
+
+          <div class="form-group">
+            <label for="product_name">Product</label>
+            <input type="text" id="product_name" name="product_name" value="{{ filters.product_name }}" placeholder="Product name">
+          </div>
+
+          <div class="form-group">
+            <label>Group</label>
+            <div class="custom-select" data-name="group_id" id="ordersGroupFilterSelect">
+              <div class="custom-select-trigger" tabindex="0" role="button">
+                <span>
+                  {% if filters.group_id %}
+                    {% set ns = namespace(name='All groups') %}
+                    {% for group in product_groups %}
+                      {% if filters.group_id|string == group.id|string %}
+                        {% set ns.name = group.name %}
+                      {% endif %}
+                    {% endfor %}
+                    {{ ns.name }}
+                  {% else %}
+                    All groups
+                  {% endif %}
+                </span>
+              </div>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not filters.group_id %}selected{% endif %}" data-value="">All groups</div>
+                {% for group in product_groups %}
+                  <div class="custom-option {% if filters.group_id|string == group.id|string %}selected{% endif %}" data-value="{{ group.id }}">
+                    {{ group.name }}
+                  </div>
+                {% endfor %}
+              </div>
+
+              <input type="hidden" name="group_id" value="{{ filters.group_id or '' }}">
+            </div>
+          </div>
+        </div>
+
+        <div class="jobs-status-pills">
+          <span class="jobs-status-label">Status</span>
+          {% for status_option in ['All', 'Waiting', 'In Progress', 'Completed', 'Delayed'] %}
+          <label class="jobs-pill-option">
+            <input
+              type="checkbox"
+              name="status"
+              value="{{ status_option }}"
+              {% if (status_option == 'All' and (not filters.status or 'All' in filters.status)) or status_option in filters.status %}checked{% endif %}
+            >
+            <span>{{ status_option }}</span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <details class="jobs-more-filters">
+          <summary>More filters</summary>
+          <div class="jobs-more-filters-grid">
+            <div class="form-group">
+              <label for="priority">Priority</label>
+              <select id="priority" name="priority">
+                <option value="">All</option>
+                <option value="Low" {% if filters.priority == 'Low' %}selected{% endif %}>Low</option>
+                <option value="Medium" {% if filters.priority == 'Medium' %}selected{% endif %}>Medium</option>
+                <option value="High" {% if filters.priority == 'High' %}selected{% endif %}>High</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="due_date_from">Due Date From</label>
+              <input type="date" id="due_date_from" name="due_date_from" value="{{ filters.due_date_from }}">
+            </div>
+
+            <div class="form-group">
+              <label for="due_date_to">Due Date To</label>
+              <input type="date" id="due_date_to" name="due_date_to" value="{{ filters.due_date_to }}">
+            </div>
+          </div>
+        </details>
+
+        <div class="form-actions">
+          <a href="{{ url_for('orders') }}" class="dashboard-btn secondary">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="orders-results">
+  <div class="dashboard-table-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Order list</span>
+        <h4>All Orders</h4>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="orders-table orders-cost-table">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Product</th>
+            <th>Group</th>
+            <th>Qty</th>
+            <th>Status</th>
+            <th>Due Date</th>
+            <th>Priority</th>
+            <th>Materials</th>
+            <th>Jobs</th>
+            <th>Total</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if orders %}
+            {% for order in orders %}
+              {% set status_class = '' %}
+              {% if order.status == 'In Progress' %}
+                {% set status_class = 'in-progress' %}
+              {% elif order.status == 'Waiting' %}
+                {% set status_class = 'waiting' %}
+              {% elif order.status == 'Completed' %}
+                {% set status_class = 'completed' %}
+              {% elif order.status == 'Delayed' %}
+                {% set status_class = 'delayed' %}
+              {% endif %}
+
+              <tr>
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>{{ order.product_name }}</td>
+                <td><span class="group-badge">{{ order.group_name }}</span></td>
+                <td>{{ order.quantity }}</td>
+                <td><span class="status-badge {{ status_class }}">{{ order.status }}</span></td>
+                <td>{{ order.due_date }}</td>
+                <td><span class="priority-pill priority-{{ order.priority|lower }}">{{ order.priority }}</span></td>
+                <td>€ {{ '%.2f'|format(order.materials_cost) }}</td>
+                <td>€ {{ '%.2f'|format(order.jobs_cost) }}</td>
+                <td><strong>€ {{ '%.2f'|format(order.total_cost) }}</strong></td>
+                <td class="actions-cell">
+                  <div class="table-actions-inline">
+                    <a href="{{ url_for('order_materials', order_id=order.id) }}" class="table-action-btn btn-neutral">Materials</a>
+                    <a href="{{ url_for('order_shortages', order_id=order.id) }}" class="table-action-btn btn-neutral">Shortages</a>
+                    <a href="{{ url_for('jobs', order_number=order.order_number) }}" class="table-action-btn btn-neutral">Jobs</a>
+                    <a href="{{ url_for('edit_order', order_id=order.id) }}" class="table-action-btn btn-primary">Edit</a>
+                    <form method="POST" action="{{ url_for('delete_order', order_id=order.id) }}" class="inline-form" onsubmit="return confirm('Delete this order?');">
+                      <button type="submit" class="table-action-btn btn-danger">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="11" class="empty-table-message">No orders found.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

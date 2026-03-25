@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Suppliers{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Procurement</span>
+    <h1>Suppliers</h1>
+    <p>Manage supplier records, contact details and purchasing partners for your company.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('export_suppliers_excel') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}" class="dashboard-btn secondary">Export Excel</a>
+    <a href="{{ url_for('export_suppliers_pdf') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}" class="dashboard-btn secondary">Export PDF</a>
+
+    {% if has_permission_ui("manage_procurement") %}
+      <a href="{{ url_for('new_supplier') }}" class="dashboard-btn primary">New Supplier</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="dashboard-stats section-spacing">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Total Suppliers</span>
+    <strong>{{ suppliers|length }}</strong>
+    <span class="stat-meta">Visible by current filters</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Active</span>
+    <strong>
+      {% set active_count = namespace(value=0) %}
+      {% for supplier in suppliers %}
+        {% if supplier[9] %}
+          {% set active_count.value = active_count.value + 1 %}
+        {% endif %}
+      {% endfor %}
+      {{ active_count.value }}
+    </strong>
+    <span class="stat-meta">Available suppliers</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Inactive</span>
+    <strong>{{ suppliers|length - active_count.value }}</strong>
+    <span class="stat-meta">Archived or paused</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Directory</span>
+    <strong>Ready</strong>
+    <span class="stat-meta">Procurement partner base</span>
+  </div>
+</div>
+
+<div class="filters-wrapper section-spacing">
+  <button type="button" class="filters-toggle-btn" aria-expanded="false">
+    Filters
+  </button>
+
+  <div class="filters-panel filters-collapsed">
+    <div class="dashboard-form-card">
+      <div class="card-header">
+        <div>
+          <span class="card-kicker">Filters</span>
+          <h4>Supplier Filters</h4>
+        </div>
+      </div>
+
+      <form method="GET" class="order-form procurement-request-clean-form">
+        <div class="form-grid procurement-request-grid">
+          <div class="form-group">
+            <label for="search">Search</label>
+            <input type="text" id="search" name="search" value="{{ search }}">
+          </div>
+
+          <div class="form-group">
+            <label for="status">Status</label>
+            <div class="custom-select" data-select>
+              <input type="hidden" name="status" id="status" value="{{ status_filter }}">
+              <button type="button" class="custom-select-trigger">
+                <span>
+                  {% if status_filter == "active" %}Active
+                  {% elif status_filter == "inactive" %}Inactive
+                  {% else %}All Suppliers{% endif %}
+                </span>
+              </button>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not status_filter %}selected{% endif %}" data-value="">All Suppliers</div>
+                <div class="custom-option {% if status_filter == 'active' %}selected{% endif %}" data-value="active">Active</div>
+                <div class="custom-option {% if status_filter == 'inactive' %}selected{% endif %}" data-value="inactive">Inactive</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions procurement-form-actions">
+          <button type="submit" class="dashboard-btn primary">Apply Filters</button>
+          <a href="{{ url_for('suppliers') }}" class="dashboard-btn secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-table-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Directory</span>
+      <h4>Supplier List</h4>
+    </div>
+
+    {% if has_permission_ui("manage_procurement") %}
+      <a href="{{ url_for('new_supplier') }}" class="dashboard-btn secondary">Add Supplier</a>
+    {% endif %}
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table suppliers-table">
+      <thead>
+        <tr>
+          <th>Supplier</th>
+          <th>Code</th>
+          <th>Contact</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Status</th>
+          {% if has_permission_ui("manage_procurement") %}
+            <th>Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+
+      <tbody>
+        {% if suppliers %}
+          {% for supplier in suppliers %}
+            <tr>
+              <td data-label="Supplier">
+                <div class="product-cell">
+                  <strong>{{ supplier[2] }}</strong>
+                  <span class="product-sub">{{ supplier[7] if supplier[7] else "No address provided" }}</span>
+                </div>
+              </td>
+
+              <td data-label="Code">{{ supplier[3] if supplier[3] else "—" }}</td>
+              <td data-label="Contact">{{ supplier[4] if supplier[4] else "—" }}</td>
+              <td data-label="Email">{{ supplier[5] if supplier[5] else "—" }}</td>
+              <td data-label="Phone">{{ supplier[6] if supplier[6] else "—" }}</td>
+
+              <td data-label="Status">
+                {% if supplier[9] %}
+                  <span class="status-badge completed">Active</span>
+                {% else %}
+                  <span class="status-badge paused">Inactive</span>
+                {% endif %}
+              </td>
+
+              {% if has_permission_ui("manage_procurement") %}
+                <td data-label="Actions">
+                  <div class="actions-cell">
+                    <a href="{{ url_for('edit_supplier', supplier_id=supplier[0]) }}" class="table-action-btn">Edit</a>
+                  </div>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{% if has_permission_ui('manage_procurement') %}7{% else %}6{% endif %}" class="empty-table-message">
+              No suppliers found for current filters.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

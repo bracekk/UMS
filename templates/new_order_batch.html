@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | New Order Batch{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Orders</span>
+    <h1>New Order Batch</h1>
+    <p>Create a planning batch for future orders before activating real execution flow.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('order_batches') }}" class="dashboard-btn secondary">Back</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing product-form-card">
+  <form method="POST" action="{{ url_for('new_order_batch') }}" class="order-form">
+    <div class="jobs-filter-grid">
+      <div class="form-group">
+        <label for="name">Batch Name</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          placeholder="April planning batch"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Notes</label>
+        <textarea
+          id="notes"
+          name="notes"
+          rows="5"
+          placeholder="Optional internal notes for this batch..."
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('order_batches') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Create Batch</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

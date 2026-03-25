@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Edit Product Job{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Routing</span>
+    <h1>Edit Product Job</h1>
+    <p>Update routing step for {{ product.product_name }}.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('product_jobs', product_id=product.id) }}" class="dashboard-btn secondary">Back to Product Jobs</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card product-form-card">
+  <form method="POST" class="order-form">
+    <div class="form-grid form-grid-4">
+      <div class="form-group">
+        <label for="job_name">Job Name</label>
+        <input
+          type="text"
+          id="job_name"
+          name="job_name"
+          value="{{ job_template.job_name }}"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="workstation_id">Workstation</label>
+        <select id="workstation_id" name="workstation_id" required>
+          {% for workstation in workstations %}
+            <option value="{{ workstation.id }}" {% if job_template.workstation_id == workstation.id %}selected{% endif %}>
+              {{ workstation.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="sequence">Sequence</label>
+        <input
+          type="number"
+          id="sequence"
+          name="sequence"
+          value="{{ job_template.sequence }}"
+          min="1"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="estimated_hours">Estimated Hours</label>
+        <input
+          type="number"
+          step="0.01"
+          id="estimated_hours"
+          name="estimated_hours"
+          value="{{ job_template.estimated_hours }}"
+          min="0"
+          required
+        >
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('product_jobs', product_id=product.id) }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Update Product Job</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

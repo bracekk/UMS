@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | New Item{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Inventory</span>
+    <h1>New Item</h1>
+    <p>Create a new inventory item and optionally assign a default supplier for procurement.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('items') }}" class="dashboard-btn secondary">Back to Items</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Item Setup</span>
+      <h4>Create Item</h4>
+    </div>
+  </div>
+
+  <form method="POST" class="order-form procurement-form">
+    <div class="form-grid">
+      <div class="form-group floating-group">
+        <input type="text" id="item_code" name="item_code" placeholder=" " required>
+        <label for="item_code">Item Code</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="item_name" name="item_name" placeholder=" " required>
+        <label for="item_name">Item Name</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="measurement_unit" name="measurement_unit" placeholder=" " required>
+        <label for="measurement_unit">Measurement Unit</label>
+      </div>
+
+      <div class="form-group">
+        <label for="supplier_id">Default Supplier</label>
+        <div class="custom-select" data-select>
+          <input type="hidden" name="supplier_id" id="supplier_id" value="">
+          <button type="button" class="custom-select-trigger">
+            <span>No default supplier</span>
+          </button>
+
+          <div class="custom-options">
+            <div class="custom-option selected" data-value="">No default supplier</div>
+            {% for supplier in suppliers %}
+              <div class="custom-option" data-value="{{ supplier[0] }}">{{ supplier[1] }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="number" step="0.01" id="unit_price" name="unit_price" placeholder=" " required>
+        <label for="unit_price">Unit Price</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="number" step="0.01" id="stock_quantity" name="stock_quantity" placeholder=" " required>
+        <label for="stock_quantity">Stock Quantity</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="number" step="0.01" id="min_stock" name="min_stock" placeholder=" " required>
+        <label for="min_stock">Minimum Stock</label>
+      </div>
+    </div>
+
+    <div class="procurement-form-section">
+      <div class="form-group floating-group">
+        <textarea id="description" name="description" rows="4" placeholder=" "></textarea>
+        <label for="description">Description</label>
+      </div>
+    </div>
+
+    <div class="form-actions procurement-form-actions">
+      <a href="{{ url_for('items') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Create Item</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Product Jobs{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Routing</span>
+    <h1>Jobs — {{ product.product_name }}</h1>
+    <p>Manage job templates and workstation routing for this product.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('products') }}" class="dashboard-btn secondary">Back to Products</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing product-form-card">
+  <form method="POST" action="{{ url_for('add_product_job', product_id=product.id) }}" class="order-form">
+    <div class="form-grid form-grid-4">
+      <div class="form-group">
+        <label for="job_name">Job Name</label>
+        <input type="text" id="job_name" name="job_name" required>
+      </div>
+
+      <div class="form-group">
+        <label>Workstation</label>
+
+        <div class="custom-select" data-name="workstation_id">
+          <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select workstation">
+            <span>{% if workstations %}{{ workstations[0].name }}{% else %}No workstations{% endif %}</span>
+          </div>
+
+          <div class="custom-options">
+            {% for ws in workstations %}
+              <div class="custom-option {% if loop.first %}selected{% endif %}" data-value="{{ ws.id }}">
+                {{ ws.name }}
+              </div>
+            {% endfor %}
+          </div>
+
+          <input
+            type="hidden"
+            id="workstation_id"
+            name="workstation_id"
+            value="{% if workstations %}{{ workstations[0].id }}{% endif %}"
+            {% if workstations %}required{% endif %}>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="sequence">Sequence</label>
+        <input type="number" id="sequence" name="sequence" min="1" value="1" required>
+      </div>
+
+      <div class="form-group">
+        <label for="estimated_hours">Estimated Hours</label>
+        <input type="number" step="0.01" min="0" id="estimated_hours" name="estimated_hours" value="0" required>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="dashboard-btn primary" {% if not workstations %}disabled{% endif %}>Add Job Template</button>
+    </div>
+  </form>
+</div>
+
+<div class="dashboard-table-card">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Templates</span>
+      <h4>Product Job Templates</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>Sequence</th>
+          <th>Job Name</th>
+          <th>Workstation</th>
+          <th>Estimated Hours</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% if job_templates %}
+          {% for job in job_templates %}
+            <tr>
+              <td data-label="Sequence">{{ job.sequence }}</td>
+              <td data-label="Job Name">{{ job.job_name }}</td>
+              <td data-label="Workstation">{{ job.workstation_name }}</td>
+              <td data-label="Estimated Hours">{{ job.estimated_hours }}</td>
+              <td data-label="Actions">
+                <div class="actions-cell">
+                  <a href="{{ url_for('edit_product_job', job_id=job.id) }}" class="table-action-btn">Edit</a>
+
+                  <form method="POST" action="{{ url_for('delete_product_job', job_id=job.id) }}" class="inline-form" onsubmit="return confirm('Delete this job template?');">
+                    <button type="submit" class="table-action-btn btn-delete">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="empty-table-message">No job templates found for this product.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

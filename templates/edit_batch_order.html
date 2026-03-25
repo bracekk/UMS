@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}UMS | Edit Batch Order{% endblock %}
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Order Batch</span>
+    <h1>Edit Planned Order</h1>
+    <p>Update the planned order before launching the batch into real execution.</p>
+  </div>
+  <div class="jobs-header-right"><a href="{{ url_for('view_order_batch', batch_id=batch.id) }}" class="dashboard-btn secondary">Back to Batch</a></div>
+</div>
+
+<div class="dashboard-form-card product-form-card batch-edit-shell">
+  <form method="POST" action="{{ url_for('edit_batch_order', batch_id=batch.id, batch_order_id=batch_order.id) }}" class="order-form" id="edit-batch-order-form">
+    <div class="form-grid form-grid-2">
+      <div class="form-group floating-group"><input type="text" id="order_number" name="order_number" value="{{ batch_order.order_number }}" placeholder=" " required><label for="order_number">Order Number</label></div>
+      <div class="form-group"><label>Product Group</label><select id="edit_batch_group_filter"><option value="">All groups</option>{% for group in product_groups %}<option value="{{ group.id }}">{{ group.name }}</option>{% endfor %}</select></div>
+      <div class="form-group form-group-full"><label>Product</label>
+        <div class="custom-select" data-name="product_id" id="editBatchProductSelect">
+          <div class="custom-select-trigger" tabindex="0" role="button"><span>Select product</span></div>
+          <div class="custom-options">
+            {% for product in products %}
+              <div class="custom-option {% if batch_order.product_id == product.id %}selected{% endif %}" data-value="{{ product.id }}" data-group-id="{{ product.group_id or '' }}">{{ product.product_code }} — {{ product.product_name }}</div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="product_id" value="{{ batch_order.product_id }}">
+        </div>
+      </div>
+      <div class="form-group floating-group"><input type="number" step="0.01" min="0.01" id="quantity" name="quantity" value="{{ batch_order.quantity }}" placeholder=" " required><label for="quantity">Quantity</label></div>
+      <div class="form-group"><label>Priority</label><div class="custom-select" data-name="priority"><div class="custom-select-trigger" tabindex="0" role="button"><span>{{ batch_order.priority }}</span></div><div class="custom-options"><div class="custom-option {% if batch_order.priority == 'Low' %}selected{% endif %}" data-value="Low">Low</div><div class="custom-option {% if batch_order.priority == 'Medium' %}selected{% endif %}" data-value="Medium">Medium</div><div class="custom-option {% if batch_order.priority == 'High' %}selected{% endif %}" data-value="High">High</div></div><input type="hidden" name="priority" value="{{ batch_order.priority }}"></div></div>
+      <div class="form-group"><label for="due_date">Due Date</label><input type="date" id="due_date" name="due_date" value="{{ batch_order.due_date }}"></div>
+      <div class="form-group floating-group"><textarea id="notes" name="notes" rows="5" placeholder=" ">{{ batch_order.notes }}</textarea><label for="notes">Notes</label></div>
+    </div>
+    <div class="form-actions"><a href="{{ url_for('view_order_batch', batch_id=batch.id) }}" class="dashboard-btn secondary">Cancel</a><button type="submit" class="dashboard-btn primary">Update Batch Order</button></div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const groupFilter = document.getElementById('edit_batch_group_filter');
+  const select = document.getElementById('editBatchProductSelect');
+  if (!groupFilter || !select) return;
+  const triggerText = select.querySelector('.custom-select-trigger span');
+  const hiddenInput = select.querySelector('input[type="hidden"]');
+  const options = Array.from(select.querySelectorAll('.custom-option'));
+  function update() {
+    const selectedGroup = groupFilter.value;
+    let activeOption = options.find(opt => opt.dataset.value === hiddenInput.value && (!selectedGroup || (opt.dataset.groupId || '') === selectedGroup));
+    options.forEach((option) => {
+      const visible = !selectedGroup || (option.dataset.groupId || '') === selectedGroup;
+      option.style.display = visible ? '' : 'none';
+      option.classList.remove('selected');
+    });
+    if (!activeOption) activeOption = options.find(opt => opt.style.display !== 'none');
+    if (activeOption) {
+      activeOption.classList.add('selected');
+      hiddenInput.value = activeOption.dataset.value;
+      triggerText.textContent = activeOption.textContent.trim();
+    }
+  }
+  update();
+  groupFilter.addEventListener('change', update);
+})();
+</script>
+{% endblock %}

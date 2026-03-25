@@ -1,0 +1,43 @@
+.cost-stat-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.group-filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.group-filter-pill,
+.group-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.84);
+  text-decoration: none;
+  font-size: 0.84rem;
+}
+
+.group-filter-pill.active {
+  background: rgba(124, 92, 255, 0.2);
+  border-color: rgba(124, 92, 255, 0.45);
+  color: #fff;
+}
+
+.products-cost-table td,
+.orders-cost-table td,
+.batch-order-cost-table td,
+.batch-list-table td {
+  vertical-align: middle;
+}
+
+.products-cost-table th:nth-last-child(1),
+.orders-cost-table th:nth-last-child(1),
+.batch-order-cost-table th:nth-last-child(1) {
+  min-width: 210px;
+}

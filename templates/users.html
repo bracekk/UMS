@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | User Management{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Administration</span>
+    <h1>User Management</h1>
+    <p>Manage company users, roles and custom access permissions.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('new_user') }}" class="dashboard-btn primary">New User</a>
+  </div>
+</div>
+
+{% if users %}
+  <div class="users-page-list section-spacing">
+    {% for user in users %}
+      <article class="users-page-card">
+        <div class="users-page-card-top">
+          <div class="users-page-card-main">
+            <div class="users-page-user-title-row">
+              <h3>{{ user.full_name }}</h3>
+
+              {% if user.is_active %}
+                <span class="status-badge completed">Active</span>
+              {% else %}
+                <span class="status-badge delayed">Disabled</span>
+              {% endif %}
+            </div>
+
+            <p>{{ user.email }}</p>
+          </div>
+        </div>
+
+        <div class="users-page-card-grid">
+          <div class="users-role-panel">
+            <div class="users-section-kicker">Role</div>
+
+            <form method="POST" action="{{ url_for('update_user_role', user_id=user.id) }}" class="users-role-form">
+              <div class="custom-select">
+                <div class="custom-select-trigger" tabindex="0">
+                  <span>{{ user.role|capitalize }}</span>
+                </div>
+
+                <div class="custom-options">
+                  <div class="custom-option" data-value="admin">Admin</div>
+                  <div class="custom-option" data-value="manager">Manager</div>
+                  <div class="custom-option" data-value="worker">Worker</div>
+                </div>
+
+                <input type="hidden" name="role" value="{{ user.role }}">
+              </div>
+
+              <div class="form-actions users-role-actions">
+                <button type="submit" class="dashboard-btn secondary">Save Role</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="users-permissions-panel">
+            <div class="users-section-kicker">Permissions</div>
+
+            <form method="POST" action="{{ url_for('update_user_permissions', user_id=user.id) }}">
+              <div class="permission-groups">
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Orders</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_view_orders"
+                        value="1"
+                        {% if "view_orders" in user.permissions %}checked{% endif %}
+                      >
+                      <span>View orders</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_orders"
+                        value="1"
+                        {% if "manage_orders" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage orders</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Jobs</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_view_jobs"
+                        value="1"
+                        {% if "view_jobs" in user.permissions %}checked{% endif %}
+                      >
+                      <span>View jobs</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_update_job_progress"
+                        value="1"
+                        {% if "update_job_progress" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Update job progress</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_jobs"
+                        value="1"
+                        {% if "manage_jobs" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage jobs</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Inventory</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_view_inventory"
+                        value="1"
+                        {% if "view_inventory" in user.permissions %}checked{% endif %}
+                      >
+                      <span>View inventory</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_inventory"
+                        value="1"
+                        {% if "manage_inventory" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage inventory</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Products &amp; Items</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_view_products"
+                        value="1"
+                        {% if "view_products" in user.permissions %}checked{% endif %}
+                      >
+                      <span>View products</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_products"
+                        value="1"
+                        {% if "manage_products" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage products</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_view_items"
+                        value="1"
+                        {% if "view_items" in user.permissions %}checked{% endif %}
+                      >
+                      <span>View items</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_items"
+                        value="1"
+                        {% if "manage_items" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage items</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Workstations</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_view_workstations"
+                        value="1"
+                        {% if "view_workstations" in user.permissions %}checked{% endif %}
+                      >
+                      <span>View workstations</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_workstations"
+                        value="1"
+                        {% if "manage_workstations" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage workstations</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Reports &amp; Export</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_view_reports"
+                        value="1"
+                        {% if "view_reports" in user.permissions %}checked{% endif %}
+                      >
+                      <span>View reports</span>
+                    </label>
+
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_export_data"
+                        value="1"
+                        {% if "export_data" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Export data</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Administration</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_users"
+                        value="1"
+                        {% if "manage_users" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage users</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="permission-group-card">
+                  <div class="permission-group-title">Procurement</div>
+                  <div class="permission-check-grid">
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_manage_procurement"
+                        value="1"
+                        {% if "manage_procurement" in user.permissions %}checked{% endif %}
+                      >
+                      <span>Manage procurement</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions users-permission-actions">
+                <button type="submit" class="dashboard-btn primary">Save Permissions</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="dashboard-form-card section-spacing">
+    <div class="empty-table-message">No users found.</div>
+  </div>
+{% endif %}
+{% endblock %}

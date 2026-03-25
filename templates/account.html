@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | My Account{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Account</span>
+    <h1>My Account</h1>
+    <p>Manage your profile, password and access settings.</p>
+  </div>
+</div>
+
+<div class="account-profile-card section-spacing">
+  <div class="account-profile-main">
+    <div class="account-profile-kicker">Profile</div>
+    <h2>{{ account_user.full_name }}</h2>
+    <p>{{ account_user.email }}</p>
+  </div>
+
+  <div class="account-profile-meta">
+    <div class="account-profile-meta-card">
+      <span class="account-meta-label">Role</span>
+      <strong>{{ account_user.role|capitalize }}</strong>
+      <span class="account-meta-sub">Base access preset</span>
+    </div>
+
+    <div class="account-profile-meta-card">
+      <span class="account-meta-label">Status</span>
+      <strong>{{ "Active" if account_user.is_active else "Disabled" }}</strong>
+      <span class="account-meta-sub">Account state</span>
+    </div>
+
+    <div class="account-profile-meta-card">
+      <span class="account-meta-label">Access</span>
+      <strong>{{ account_user.permissions|length }}</strong>
+      <span class="account-meta-sub">Granted permissions</span>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-content-grid section-spacing">
+  <div class="dashboard-form-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Security</span>
+        <h4>Change Password</h4>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('change_password') }}" class="order-form">
+      <div class="form-grid">
+        <div class="form-group floating-group">
+          <input type="password" id="current_password" name="current_password" placeholder=" " required>
+          <label for="current_password">Current Password</label>
+        </div>
+
+        <div class="form-group floating-group">
+          <input type="password" id="new_password" name="new_password" placeholder=" " required>
+          <label for="new_password">New Password</label>
+        </div>
+
+        <div class="form-group floating-group">
+          <input type="password" id="confirm_password" name="confirm_password" placeholder=" " required>
+          <label for="confirm_password">Confirm New Password</label>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="dashboard-btn primary">Update Password</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="dashboard-form-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Access</span>
+        <h4>Permission Summary</h4>
+      </div>
+    </div>
+
+    <div class="permission-groups">
+      {% for group_name, group_permissions in permission_groups.items() %}
+        <div class="permission-group-card">
+          <div class="permission-group-title">{{ group_name }}</div>
+
+          <div class="permission-badge-grid">
+            {% set ns = namespace(found=false) %}
+            {% for permission_key in group_permissions %}
+              {% if permission_key in account_user.permissions %}
+                {% set ns.found = true %}
+                <span class="permission-badge">
+                  {{ permission_key.replace('_', ' ') }}
+                </span>
+              {% endif %}
+            {% endfor %}
+
+            {% if not ns.found %}
+              <span class="subtle-meta">No access</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if has_permission_ui("manage_users") %}
+      <div class="form-actions" style="margin-top: 18px;">
+        <a href="{{ url_for('users') }}" class="dashboard-btn secondary">Open User Management</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

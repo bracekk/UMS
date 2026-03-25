@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | New Report{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Reporting</span>
+    <h1>New Production Report</h1>
+    <p>Record scrap, waste, defects or operational notes directly against active production jobs.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('reports') }}" class="dashboard-btn secondary">Back to Reports</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing product-form-card">
+  <form method="POST" action="{{ url_for('new_report') }}" class="order-form">
+    <div class="form-grid form-grid-2">
+
+      <div class="form-group form-group-full">
+        <label>Active Job</label>
+
+        {% if active_jobs %}
+          <div class="custom-select" data-name="job_id">
+            <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select active job">
+              <span>
+                {% set preselected_job_id = request.args.get('job_id')|int %}
+                {% if preselected_job_id %}
+                  {% set ns = namespace(found=false) %}
+                  {% for job in active_jobs %}
+                    {% if job.id == preselected_job_id %}
+                      {% set ns.found = true %}
+                      {{ job.order_number }} — {{ job.product_name }} — {{ job.job_name }} — {{ job.workstation_name }} ({{ job.status }})
+                    {% endif %}
+                  {% endfor %}
+                  {% if not ns.found %}
+                    {{ active_jobs[0].order_number }} — {{ active_jobs[0].product_name }} — {{ active_jobs[0].job_name }} — {{ active_jobs[0].workstation_name }} ({{ active_jobs[0].status }})
+                  {% endif %}
+                {% else %}
+                  {{ active_jobs[0].order_number }} — {{ active_jobs[0].product_name }} — {{ active_jobs[0].job_name }} — {{ active_jobs[0].workstation_name }} ({{ active_jobs[0].status }})
+                {% endif %}
+              </span>
+            </div>
+
+            <div class="custom-options">
+              {% for job in active_jobs %}
+                <div
+                  class="custom-option {% if (request.args.get('job_id')|int == job.id) or (not request.args.get('job_id') and loop.first) %}selected{% endif %}"
+                  data-value="{{ job.id }}">
+                  {{ job.order_number }} — {{ job.product_name }} — {{ job.job_name }} — {{ job.workstation_name }} ({{ job.status }})
+                </div>
+              {% endfor %}
+            </div>
+
+            <input
+              type="hidden"
+              id="job_id"
+              name="job_id"
+              value="{% if request.args.get('job_id') %}{{ request.args.get('job_id') }}{% else %}{{ active_jobs[0].id }}{% endif %}"
+              required>
+          </div>
+        {% else %}
+          <div class="custom-select">
+            <div class="custom-select-trigger is-disabled" aria-disabled="true">
+              <span>No active jobs available</span>
+            </div>
+            <input type="hidden" id="job_id" name="job_id" value="" disabled>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label>Report Type</label>
+
+        <div class="custom-select" data-name="report_type" id="report-type-select">
+          <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select report type">
+            <span>Select type</span>
+          </div>
+
+          <div class="custom-options">
+            <div class="custom-option" data-value="scrap">Scrap</div>
+            <div class="custom-option" data-value="waste">Waste</div>
+            <div class="custom-option" data-value="defect">Defect</div>
+            <div class="custom-option" data-value="note">Note</div>
+          </div>
+
+          <input type="hidden" id="report_type" name="report_type" value="" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="quantity">Quantity</label>
+        <input type="number" step="0.01" min="0" id="quantity" name="quantity" required>
+      </div>
+
+      <div class="form-group">
+        <label>Unit</label>
+
+        <div class="custom-select" data-name="unit" id="report-unit-select">
+          <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select report unit">
+            <span>pcs (units)</span>
+          </div>
+
+          <div class="custom-options">
+            <div class="custom-option selected" data-value="pcs">pcs (units)</div>
+            <div class="custom-option" data-value="m2">m²</div>
+            <div class="custom-option" data-value="m">m</div>
+            <div class="custom-option" data-value="kg">kg</div>
+            <div class="custom-option" data-value="g">g</div>
+            <div class="custom-option" data-value="l">l</div>
+            <div class="custom-option" data-value="custom">Custom...</div>
+          </div>
+
+          <input type="hidden" id="unit" name="unit" value="pcs" required>
+        </div>
+      </div>
+
+      <div class="form-group form-group-full" id="custom-unit-wrapper" style="display:none;">
+        <label for="custom_unit">Custom Unit</label>
+        <input type="text" id="custom_unit" name="custom_unit" placeholder="e.g. panels, boxes, sheets">
+      </div>
+
+      <div class="form-group form-group-full">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" placeholder="Describe what happened, root cause, batch issue, operator note, etc."></textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('reports') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Create Report</button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const unitInput = document.getElementById("unit");
+  const customUnitWrapper = document.getElementById("custom-unit-wrapper");
+  const customUnitInput = document.getElementById("custom_unit");
+
+  function syncCustomUnitVisibility() {
+    if (!unitInput || !customUnitWrapper || !customUnitInput) return;
+
+    if (unitInput.value === "custom") {
+      customUnitWrapper.style.display = "";
+      customUnitInput.setAttribute("required", "required");
+    } else {
+      customUnitWrapper.style.display = "none";
+      customUnitInput.removeAttribute("required");
+      customUnitInput.value = "";
+    }
+  }
+
+  syncCustomUnitVisibility();
+
+  document.querySelectorAll('#report-unit-select .custom-option').forEach(option => {
+    option.addEventListener("click", function () {
+      setTimeout(syncCustomUnitVisibility, 0);
+    });
+  });
+});
+</script>
+{% endblock %}

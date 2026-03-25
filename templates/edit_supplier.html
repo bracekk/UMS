@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Edit Supplier{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Procurement</span>
+    <h1>Edit Supplier</h1>
+    <p>Update supplier details, contact information and availability for future purchasing.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('suppliers') }}" class="dashboard-btn secondary">Back to Suppliers</a>
+  </div>
+</div>
+
+<div class="dashboard-stats section-spacing">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Supplier</span>
+    <strong>{{ supplier[2] }}</strong>
+    <span class="stat-meta">Current supplier record</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Code</span>
+    <strong>{{ supplier[3] if supplier[3] else "—" }}</strong>
+    <span class="stat-meta">Internal supplier code</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Status</span>
+    <strong>{{ "Active" if supplier[9] else "Inactive" }}</strong>
+    <span class="stat-meta">Supplier availability</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Contact</span>
+    <strong>{{ supplier[4] if supplier[4] else "—" }}</strong>
+    <span class="stat-meta">Primary contact person</span>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Supplier Setup</span>
+      <h4>Edit Supplier</h4>
+    </div>
+  </div>
+
+  <form method="POST" class="order-form procurement-form">
+    <div class="form-grid">
+      <div class="form-group floating-group">
+        <input type="text" id="name" name="name" value="{{ supplier[2] }}" placeholder=" " required>
+        <label for="name">Supplier Name</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="supplier_code" name="supplier_code" value="{{ supplier[3] or '' }}" placeholder=" ">
+        <label for="supplier_code">Supplier Code</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="contact_person" name="contact_person" value="{{ supplier[4] or '' }}" placeholder=" ">
+        <label for="contact_person">Contact Person</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="email" name="email" value="{{ supplier[5] or '' }}" placeholder=" ">
+        <label for="email">Email</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="phone" name="phone" value="{{ supplier[6] or '' }}" placeholder=" ">
+        <label for="phone">Phone</label>
+      </div>
+
+      <div class="form-group floating-group">
+        <input type="text" id="address" name="address" value="{{ supplier[7] or '' }}" placeholder=" ">
+        <label for="address">Address</label>
+      </div>
+    </div>
+
+    <div class="procurement-form-section">
+      <div class="form-group floating-group">
+        <textarea id="notes" name="notes" rows="5" placeholder=" ">{{ supplier[8] or '' }}</textarea>
+        <label for="notes">Notes</label>
+      </div>
+    </div>
+
+    <div class="procurement-form-section">
+      <label class="toggle-row procurement-toggle-row">
+        <input type="checkbox" name="is_active" {% if supplier[9] %}checked{% endif %}>
+        <span class="toggle-copy">
+          <strong>Supplier is active</strong>
+          <small>Inactive suppliers remain in history but won't be offered for new purchasing by default.</small>
+        </span>
+      </label>
+    </div>
+
+    <div class="form-actions procurement-form-actions">
+      <a href="{{ url_for('suppliers') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Save Changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

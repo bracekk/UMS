@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Edit Purchase Request{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Procurement</span>
+    <h1>Edit Purchase Request</h1>
+    <p>Update request details before final procurement action is completed.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('purchase_requests') }}" class="dashboard-btn secondary">Back to Requests</a>
+  </div>
+</div>
+
+<div class="dashboard-stats section-spacing">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Request</span>
+    <strong>{{ purchase_request[2] if purchase_request[2] else ("PR-" ~ purchase_request[0]) }}</strong>
+    <span class="stat-meta">Purchase request reference</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Status</span>
+    <strong>{{ purchase_request[9]|capitalize }}</strong>
+    <span class="stat-meta">Current workflow state</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Priority</span>
+    <strong>{{ purchase_request[10]|capitalize }}</strong>
+    <span class="stat-meta">Current priority level</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Needed By</span>
+    <strong>{{ purchase_request[11] if purchase_request[11] else "—" }}</strong>
+    <span class="stat-meta">Requested due date</span>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Workflow</span>
+      <h4>Edit Request</h4>
+    </div>
+  </div>
+
+  <form method="POST" class="order-form procurement-form procurement-request-clean-form">
+    <div class="form-grid procurement-request-grid">
+      <div class="form-group">
+        <label for="item_id">Inventory Item</label>
+        <div class="custom-select" data-select>
+          <input type="hidden" name="item_id" id="item_id" value="{{ purchase_request[3] or '' }}">
+          <button type="button" class="custom-select-trigger">
+            <span>
+              {% set current_item = namespace(name='Select item') %}
+              {% for item in items %}
+                {% if purchase_request[3] == item[0] %}
+                  {% set current_item.name = item[1] ~ ((' (' ~ item[2] ~ ')') if item[2] else '') ~ ((' · ' ~ item[4]) if item[4] else '') %}
+                {% endif %}
+              {% endfor %}
+              {{ current_item.name }}
+            </span>
+          </button>
+
+          <div class="custom-options">
+            <div class="custom-option {% if not purchase_request[3] %}selected{% endif %}" data-value="" data-supplier-id="" data-unit="">
+              No linked item
+            </div>
+            {% for item in items %}
+              <div
+                class="custom-option {% if purchase_request[3] == item[0] %}selected{% endif %}"
+                data-value="{{ item[0] }}"
+                data-supplier-id="{{ item[3] if item[3] else '' }}"
+                data-unit="{{ item[2] if item[2] else '' }}"
+              >
+                {{ item[1] }}{% if item[2] %} ({{ item[2] }}){% endif %}{% if item[4] %} · {{ item[4] }}{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="title">Request Title</label>
+        <input type="text" id="title" name="title" value="{{ purchase_request[5] or '' }}">
+      </div>
+
+      <div class="form-group">
+        <label for="supplier_id">Supplier</label>
+        <div class="custom-select" data-select>
+          <input type="hidden" name="supplier_id" id="supplier_id" value="{{ purchase_request[4] or '' }}">
+          <button type="button" class="custom-select-trigger">
+            <span>
+              {% set current_supplier = namespace(name='No supplier selected') %}
+              {% for supplier in suppliers %}
+                {% if purchase_request[4] == supplier[0] %}
+                  {% set current_supplier.name = supplier[1] %}
+                {% endif %}
+              {% endfor %}
+              {{ current_supplier.name }}
+            </span>
+          </button>
+
+          <div class="custom-options">
+            <div class="custom-option {% if not purchase_request[4] %}selected{% endif %}" data-value="">
+              No supplier selected
+            </div>
+            {% for supplier in suppliers %}
+              <div class="custom-option {% if purchase_request[4] == supplier[0] %}selected{% endif %}" data-value="{{ supplier[0] }}">
+                {{ supplier[1] }}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="quantity">Quantity</label>
+        <input type="number" step="0.01" id="quantity" name="quantity" value="{{ purchase_request[7] }}" required>
+      </div>
+
+      <div class="form-group">
+        <label for="unit">Unit</label>
+        <input type="text" id="unit" name="unit" value="{{ purchase_request[8] or '' }}" required>
+      </div>
+
+      <div class="form-group">
+        <label for="priority">Priority</label>
+        <div class="custom-select" data-select>
+          <input type="hidden" name="priority" id="priority" value="{{ purchase_request[10] or 'normal' }}">
+          <button type="button" class="custom-select-trigger">
+            <span>{{ (purchase_request[10] or 'normal')|capitalize }}</span>
+          </button>
+
+          <div class="custom-options">
+            <div class="custom-option {% if purchase_request[10] == 'low' %}selected{% endif %}" data-value="low">Low</div>
+            <div class="custom-option {% if purchase_request[10] == 'normal' or not purchase_request[10] %}selected{% endif %}" data-value="normal">Normal</div>
+            <div class="custom-option {% if purchase_request[10] == 'high' %}selected{% endif %}" data-value="high">High</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="needed_by">Needed By</label>
+        <input type="date" id="needed_by" name="needed_by" value="{{ purchase_request[11] or '' }}">
+      </div>
+
+      <div class="procurement-grid-spacer"></div>
+    </div>
+
+    <div class="procurement-form-section">
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="4">{{ purchase_request[6] or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="procurement-form-section">
+      <div class="form-group">
+        <label for="notes">Internal Notes</label>
+        <textarea id="notes" name="notes" rows="4">{{ purchase_request[15] or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="form-actions procurement-form-actions">
+      <a href="{{ url_for('purchase_requests') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Save Changes</button>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const itemSelect = document.querySelector('#item_id')?.closest('.custom-select');
+  const supplierSelect = document.querySelector('#supplier_id')?.closest('.custom-select');
+  const unitInput = document.getElementById('unit');
+
+  if (!itemSelect || !supplierSelect || !unitInput) return;
+
+  const itemOptions = itemSelect.querySelectorAll('.custom-option');
+  const supplierOptions = supplierSelect.querySelectorAll('.custom-option');
+  const supplierHidden = document.getElementById('supplier_id');
+  const supplierTriggerText = supplierSelect.querySelector('.custom-select-trigger span');
+
+  function setSupplierById(supplierId) {
+    let matched = false;
+
+    supplierOptions.forEach(option => {
+      const isSelected = option.dataset.value === String(supplierId || "");
+      option.classList.toggle("selected", isSelected);
+
+      if (isSelected) {
+        supplierHidden.value = option.dataset.value || "";
+        supplierTriggerText.textContent = option.textContent.trim();
+        matched = true;
+      }
+    });
+
+    if (!matched && !supplierId) {
+      const emptyOption = Array.from(supplierOptions).find(opt => opt.dataset.value === "");
+      if (emptyOption) {
+        supplierHidden.value = "";
+        supplierTriggerText.textContent = emptyOption.textContent.trim();
+        emptyOption.classList.add("selected");
+      }
+    }
+  }
+
+  itemOptions.forEach(option => {
+    option.addEventListener('click', function () {
+      const supplierId = option.dataset.supplierId || "";
+      const unit = option.dataset.unit || "";
+
+      if (supplierId) {
+        setSupplierById(supplierId);
+      }
+
+      if (unit && !unitInput.value.trim()) {
+        unitInput.value = unit;
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

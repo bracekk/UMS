@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}UMS | New Order{% endblock %}
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Orders</span>
+    <h1>New Order</h1>
+    <p>Create a manufacturing order and filter available products by product group before selecting one.</p>
+  </div>
+  <div class="jobs-header-right">
+    <a href="{{ url_for('orders') }}" class="dashboard-btn secondary">Back to Orders</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card product-form-card">
+  {% if not products %}
+    <div class="flash-wrapper" style="margin-bottom: 18px;">
+      <div class="flash-message flash-error">No products found for your current company. Create a product first.</div>
+    </div>
+  {% endif %}
+
+  <form method="POST" class="order-form" id="new-order-form">
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label for="order_number">Order Number</label>
+        <input type="text" id="order_number" name="order_number" required>
+      </div>
+
+      <div class="form-group">
+        <label>Product Group</label>
+        <div class="custom-select" data-name="product_group_filter" id="newOrderGroupFilterSelect">
+          <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Filter products by group">
+            <span>
+              {% if selected_group_id %}
+                {% set ns = namespace(name='All groups') %}
+                {% for group in product_groups %}
+                  {% if selected_group_id|string == group.id|string %}
+                    {% set ns.name = group.name %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.name }}
+              {% else %}
+                All groups
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="custom-options">
+            <div class="custom-option {% if not selected_group_id %}selected{% endif %}" data-value="">All groups</div>
+            {% for group in product_groups %}
+              <div class="custom-option {% if selected_group_id|string == group.id|string %}selected{% endif %}" data-value="{{ group.id }}">
+                {{ group.name }}
+              </div>
+            {% endfor %}
+          </div>
+
+          <input type="hidden" id="product_group_filter" name="product_group_filter" value="{{ selected_group_id or '' }}">
+        </div>
+      </div>
+
+      <div class="form-group form-group-full">
+        <label>Product</label>
+        {% if products %}
+          <div class="custom-select" data-name="product_id" id="productSelect">
+            <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select product">
+              <span>Select product</span>
+            </div>
+
+            <div class="custom-options">
+              {% for product in products %}
+                <div class="custom-option" data-value="{{ product.id }}" data-group-id="{{ product.group_id or '' }}">
+                  {{ product.product_code }} - {{ product.product_name }}
+                </div>
+              {% endfor %}
+            </div>
+
+            <input type="hidden" name="product_id" value="">
+          </div>
+        {% else %}
+          <div class="custom-select">
+            <div class="custom-select-trigger is-disabled" aria-disabled="true">
+              <span>No products available</span>
+            </div>
+            <input type="hidden" name="product_id" value="" disabled>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label for="quantity">Quantity</label>
+        <input type="number" step="0.01" id="quantity" name="quantity" required {% if not products %}disabled{% endif %}>
+      </div>
+
+      <div class="form-group">
+        <label>Status</label>
+        <div class="custom-select" data-name="status">
+          <div class="custom-select-trigger" tabindex="0" role="button">
+            <span>Waiting</span>
+          </div>
+          <div class="custom-options">
+            <div class="custom-option" data-value="Waiting">Waiting</div>
+            <div class="custom-option" data-value="In Progress">In Progress</div>
+            <div class="custom-option" data-value="Completed">Completed</div>
+            <div class="custom-option" data-value="Delayed">Delayed</div>
+          </div>
+          <input type="hidden" name="status" value="Waiting">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="due_date">Due Date</label>
+        <input type="date" id="due_date" name="due_date" required {% if not products %}disabled{% endif %}>
+      </div>
+
+      <div class="form-group">
+        <label>Priority</label>
+        <div class="custom-select" data-name="priority">
+          <div class="custom-select-trigger" tabindex="0" role="button">
+            <span>Medium</span>
+          </div>
+          <div class="custom-options">
+            <div class="custom-option" data-value="Low">Low</div>
+            <div class="custom-option selected" data-value="Medium">Medium</div>
+            <div class="custom-option" data-value="High">High</div>
+          </div>
+          <input type="hidden" name="priority" value="Medium">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('orders') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Create Order</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  const groupFilter = document.getElementById('product_group_filter');
+  const select = document.getElementById('productSelect');
+
+  if (!groupFilter || !select) return;
+
+  const triggerText = select.querySelector('.custom-select-trigger span');
+  const hiddenInput = select.querySelector('input[type="hidden"]');
+  const options = Array.from(select.querySelectorAll('.custom-option'));
+
+  function visibleOptions() {
+    const selectedGroup = groupFilter.value;
+    let firstVisible = null;
+    let currentStillVisible = false;
+
+    options.forEach((option) => {
+      const optionGroup = option.dataset.groupId || '';
+      const visible = !selectedGroup || optionGroup === selectedGroup;
+      option.style.display = visible ? '' : 'none';
+
+      if (visible && !firstVisible) {
+        firstVisible = option;
+      }
+
+      if (visible && hiddenInput.value && option.dataset.value === hiddenInput.value) {
+        currentStillVisible = true;
+      }
+
+      if (!visible && option.classList.contains('selected')) {
+        option.classList.remove('selected');
+      }
+    });
+
+    if (currentStillVisible) {
+      const selected = options.find((option) => option.dataset.value === hiddenInput.value);
+      if (selected) {
+        triggerText.textContent = selected.textContent.trim();
+        options.forEach((option) => option.classList.toggle('selected', option === selected));
+        return;
+      }
+    }
+
+    if (firstVisible) {
+      options.forEach((option) => option.classList.toggle('selected', option === firstVisible));
+      hiddenInput.value = firstVisible.dataset.value;
+      triggerText.textContent = firstVisible.textContent.trim();
+    } else {
+      options.forEach((option) => option.classList.remove('selected'));
+      hiddenInput.value = '';
+      triggerText.textContent = 'No products in this group';
+    }
+  }
+
+  groupFilter.addEventListener('change', visibleOptions);
+  visibleOptions();
+})();
+</script>
+{% endblock %}

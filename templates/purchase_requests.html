@@ -1,0 +1,538 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Purchase Requests{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Procurement</span>
+    <h1>Purchase Requests</h1>
+    <p>Track internal material and supplier requests from draft to ordered state.</p>
+  </div>
+
+  <div class="jobs-header-right request-header-actions">
+    <a href="{{ url_for('export_purchase_requests_excel') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}" class="dashboard-btn secondary">
+      Export Excel
+    </a>
+
+    <a href="{{ url_for('export_purchase_requests_pdf') }}{% if request.query_string %}?{{ request.query_string.decode('utf-8') }}{% endif %}" class="dashboard-btn secondary">
+      Export PDF
+    </a>
+
+    <a href="{{ url_for('purchase_requests',
+        search=search,
+        status=status_filter,
+        priority=priority_filter,
+        supplier_id=supplier_filter,
+        history_search=history_search,
+        history_status=history_status_filter,
+        history_priority=history_priority_filter,
+        history_supplier_id=history_supplier_filter,
+        show_history='0' if show_history else '1'
+    ) }}" class="dashboard-btn secondary">
+      {% if show_history %}Hide History{% else %}Show History{% endif %}
+    </a>
+
+    {% if has_permission_ui("manage_procurement") %}
+      <a href="{{ url_for('new_purchase_request') }}" class="dashboard-btn primary">New Request</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="dashboard-stats section-spacing">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Active Requests</span>
+    <strong>{{ requests|length }}</strong>
+    <span class="stat-meta">Open procurement workflow</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Submitted</span>
+    <strong>
+      {% set submitted_count = namespace(value=0) %}
+      {% for request_row in requests %}
+        {% if request_row[9] == "submitted" %}
+          {% set submitted_count.value = submitted_count.value + 1 %}
+        {% endif %}
+      {% endfor %}
+      {{ submitted_count.value }}
+    </strong>
+    <span class="stat-meta">Waiting for action</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Approved / Ordered</span>
+    <strong>
+      {% set active_flow = namespace(value=0) %}
+      {% for request_row in requests %}
+        {% if request_row[9] in ["approved", "ordered"] %}
+          {% set active_flow.value = active_flow.value + 1 %}
+        {% endif %}
+      {% endfor %}
+      {{ active_flow.value }}
+    </strong>
+    <span class="stat-meta">In purchasing flow</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">History</span>
+    <strong>{{ archived_requests|length }}</strong>
+    <span class="stat-meta">Received / cancelled / rejected</span>
+  </div>
+</div>
+
+<div class="filters-wrapper section-spacing">
+  <button type="button" class="filters-toggle-btn" aria-expanded="false">
+    Filters
+  </button>
+
+  <div class="filters-panel filters-collapsed">
+    <div class="dashboard-form-card">
+      <div class="card-header">
+        <div>
+          <span class="card-kicker">Filters</span>
+          <h4>Request Queue Filters</h4>
+        </div>
+      </div>
+
+      <form method="GET" class="order-form procurement-request-clean-form">
+        <input type="hidden" name="show_history" value="{% if show_history %}1{% else %}0{% endif %}">
+        <input type="hidden" name="history_search" value="{{ history_search }}">
+        <input type="hidden" name="history_status" value="{{ history_status_filter }}">
+        <input type="hidden" name="history_priority" value="{{ history_priority_filter }}">
+        <input type="hidden" name="history_supplier_id" value="{{ history_supplier_filter }}">
+
+        <div class="form-grid procurement-request-grid">
+          <div class="form-group">
+            <label for="search">Search</label>
+            <input type="text" id="search" name="search" value="{{ search }}">
+          </div>
+
+          <div class="form-group">
+            <label for="status">Status</label>
+            <div class="custom-select" data-select>
+              <input type="hidden" name="status" id="status" value="{{ status_filter }}">
+              <button type="button" class="custom-select-trigger">
+                <span>
+                  {% if status_filter == "draft" %}Draft
+                  {% elif status_filter == "submitted" %}Submitted
+                  {% elif status_filter == "approved" %}Approved
+                  {% elif status_filter == "ordered" %}Ordered
+                  {% else %}All Statuses{% endif %}
+                </span>
+              </button>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not status_filter %}selected{% endif %}" data-value="">All Statuses</div>
+                <div class="custom-option {% if status_filter == 'draft' %}selected{% endif %}" data-value="draft">Draft</div>
+                <div class="custom-option {% if status_filter == 'submitted' %}selected{% endif %}" data-value="submitted">Submitted</div>
+                <div class="custom-option {% if status_filter == 'approved' %}selected{% endif %}" data-value="approved">Approved</div>
+                <div class="custom-option {% if status_filter == 'ordered' %}selected{% endif %}" data-value="ordered">Ordered</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="priority">Priority</label>
+            <div class="custom-select" data-select>
+              <input type="hidden" name="priority" id="priority" value="{{ priority_filter }}">
+              <button type="button" class="custom-select-trigger">
+                <span>
+                  {% if priority_filter == "low" %}Low
+                  {% elif priority_filter == "normal" %}Normal
+                  {% elif priority_filter == "high" %}High
+                  {% else %}All Priorities{% endif %}
+                </span>
+              </button>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not priority_filter %}selected{% endif %}" data-value="">All Priorities</div>
+                <div class="custom-option {% if priority_filter == 'low' %}selected{% endif %}" data-value="low">Low</div>
+                <div class="custom-option {% if priority_filter == 'normal' %}selected{% endif %}" data-value="normal">Normal</div>
+                <div class="custom-option {% if priority_filter == 'high' %}selected{% endif %}" data-value="high">High</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="supplier_id">Supplier</label>
+            <div class="custom-select" data-select>
+              <input type="hidden" name="supplier_id" id="supplier_id" value="{{ supplier_filter }}">
+              <button type="button" class="custom-select-trigger">
+                <span>
+                  {% set supplier_label = namespace(name='All Suppliers') %}
+                  {% for supplier in supplier_options %}
+                    {% if supplier_filter and supplier_filter|int == supplier[0] %}
+                      {% set supplier_label.name = supplier[1] %}
+                    {% endif %}
+                  {% endfor %}
+                  {{ supplier_label.name }}
+                </span>
+              </button>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not supplier_filter %}selected{% endif %}" data-value="">All Suppliers</div>
+                {% for supplier in supplier_options %}
+                  <div class="custom-option {% if supplier_filter and supplier_filter|int == supplier[0] %}selected{% endif %}" data-value="{{ supplier[0] }}">
+                    {{ supplier[1] }}
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions procurement-form-actions">
+          <button type="submit" class="dashboard-btn primary">Apply Filters</button>
+          <a href="{{ url_for('purchase_requests') }}" class="dashboard-btn secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-table-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Workflow</span>
+      <h4>Request Queue</h4>
+    </div>
+
+    {% if has_permission_ui("manage_procurement") %}
+      <a href="{{ url_for('new_purchase_request') }}" class="dashboard-btn secondary">Create Request</a>
+    {% endif %}
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table procurement-table">
+      <thead>
+        <tr>
+          <th>Request</th>
+          <th>Supplier</th>
+          <th>Qty</th>
+          <th>Priority</th>
+          <th>Needed By</th>
+          <th>Requester</th>
+          <th>Status</th>
+          {% if has_permission_ui("manage_procurement") %}
+            <th>Actions</th>
+          {% endif %}
+        </tr>
+      </thead>
+
+      <tbody>
+        {% if requests %}
+          {% for request_row in requests %}
+            {% set request_id = request_row[0] %}
+            {% set request_number = request_row[2] %}
+            {% set title = request_row[5] %}
+            {% set quantity = request_row[7] %}
+            {% set unit = request_row[8] %}
+            {% set status = request_row[9] %}
+            {% set priority = request_row[10] %}
+            {% set needed_by = request_row[11] %}
+            {% set supplier_name = request_row[18] %}
+            {% set requester_name = request_row[19] %}
+            {% set item_name = request_row[20] %}
+            {% set order_id = request_row[21] %}
+            {% set source_type = request_row[22] %}
+            {% set order_number = request_row[23] %}
+
+            <tr>
+              <td data-label="Request">
+                <div class="product-cell">
+                  <strong>
+                    {% if source_type == "shortage" and order_number %}
+                      {{ order_number }}
+                    {% elif request_number %}
+                      {{ request_number }}
+                    {% else %}
+                      Request #{{ request_id }}
+                    {% endif %}
+                  </strong>
+                  <span class="product-sub">
+                    {{ title if title else "Untitled request" }}
+                    {% if item_name %}
+                      · {{ item_name }}
+                    {% endif %}
+                    {% if source_type == "shortage" and order_number %}
+                      · From order shortage
+                    {% endif %}
+                  </span>
+                </div>
+              </td>
+
+              <td data-label="Supplier">{{ supplier_name if supplier_name else "—" }}</td>
+              <td data-label="Qty">{{ quantity }} {{ unit if unit else "" }}</td>
+
+              <td data-label="Priority">
+                {% if priority == "high" %}
+                  <span class="status-badge delayed">High</span>
+                {% elif priority == "low" %}
+                  <span class="status-badge completed">Low</span>
+                {% else %}
+                  <span class="status-badge waiting">Normal</span>
+                {% endif %}
+              </td>
+
+              <td data-label="Needed By">{{ needed_by if needed_by else "—" }}</td>
+              <td data-label="Requester">{{ requester_name if requester_name else "—" }}</td>
+
+              <td data-label="Status">
+                {% if status == "draft" %}
+                  <span class="status-badge waiting">Draft</span>
+                {% elif status == "submitted" %}
+                  <span class="status-badge in-progress">Submitted</span>
+                {% elif status == "approved" %}
+                  <span class="status-badge completed">Approved</span>
+                {% elif status == "ordered" %}
+                  <span class="status-badge delayed">Ordered</span>
+                {% else %}
+                  <span class="status-badge">{{ status }}</span>
+                {% endif %}
+              </td>
+
+              {% if has_permission_ui("manage_procurement") %}
+                <td data-label="Actions">
+                  <div class="actions-cell request-actions">
+                    {% if status in ["draft", "submitted"] %}
+                      <a href="{{ url_for('edit_purchase_request', request_id=request_id) }}" class="table-action-btn">Edit</a>
+                    {% endif %}
+
+                    {% if status == "draft" %}
+                      <a href="{{ url_for('update_request_status', request_id=request_id, status='submitted') }}" class="table-action-btn">Submit</a>
+                    {% elif status == "submitted" %}
+                      <a href="{{ url_for('update_request_status', request_id=request_id, status='approved') }}" class="table-action-btn">Approve</a>
+                      <a href="{{ url_for('update_request_status', request_id=request_id, status='rejected') }}" class="table-action-btn btn-delete">Reject</a>
+                    {% elif status == "approved" %}
+                      <a href="{{ url_for('update_request_status', request_id=request_id, status='ordered') }}" class="table-action-btn">Mark Ordered</a>
+                    {% elif status == "ordered" %}
+                      <a href="{{ url_for('receive_purchase_request', request_id=request_id) }}" class="table-action-btn btn-edit">Receive</a>
+                    {% endif %}
+
+                    {% if status in ["draft", "submitted", "approved", "ordered"] %}
+                      <a href="{{ url_for('update_request_status', request_id=request_id, status='cancelled') }}" class="table-action-btn btn-delete">Cancel</a>
+                    {% endif %}
+                  </div>
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{% if has_permission_ui('manage_procurement') %}8{% else %}7{% endif %}" class="empty-table-message">
+              No purchase requests found for current filters.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if show_history %}
+<div class="filters-wrapper section-spacing">
+  <button type="button" class="filters-toggle-btn" aria-expanded="false">
+    History Filters
+  </button>
+
+  <div class="filters-panel filters-collapsed">
+    <div class="dashboard-form-card">
+      <div class="card-header">
+        <div>
+          <span class="card-kicker">Archive Filters</span>
+          <h4>Request History Filters</h4>
+        </div>
+      </div>
+
+      <form method="GET" class="order-form procurement-request-clean-form">
+        <input type="hidden" name="show_history" value="1">
+        <input type="hidden" name="search" value="{{ search }}">
+        <input type="hidden" name="status" value="{{ status_filter }}">
+        <input type="hidden" name="priority" value="{{ priority_filter }}">
+        <input type="hidden" name="supplier_id" value="{{ supplier_filter }}">
+
+        <div class="form-grid procurement-request-grid">
+          <div class="form-group">
+            <label for="history_search">Search</label>
+            <input type="text" id="history_search" name="history_search" value="{{ history_search }}">
+          </div>
+
+          <div class="form-group">
+            <label for="history_status">Status</label>
+            <div class="custom-select" data-select>
+              <input type="hidden" name="history_status" id="history_status" value="{{ history_status_filter }}">
+              <button type="button" class="custom-select-trigger">
+                <span>
+                  {% if history_status_filter == "received" %}Received
+                  {% elif history_status_filter == "cancelled" %}Cancelled
+                  {% elif history_status_filter == "rejected" %}Rejected
+                  {% else %}All History Statuses{% endif %}
+                </span>
+              </button>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not history_status_filter %}selected{% endif %}" data-value="">All History Statuses</div>
+                <div class="custom-option {% if history_status_filter == 'received' %}selected{% endif %}" data-value="received">Received</div>
+                <div class="custom-option {% if history_status_filter == 'cancelled' %}selected{% endif %}" data-value="cancelled">Cancelled</div>
+                <div class="custom-option {% if history_status_filter == 'rejected' %}selected{% endif %}" data-value="rejected">Rejected</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="history_priority">Priority</label>
+            <div class="custom-select" data-select>
+              <input type="hidden" name="history_priority" id="history_priority" value="{{ history_priority_filter }}">
+              <button type="button" class="custom-select-trigger">
+                <span>
+                  {% if history_priority_filter == "low" %}Low
+                  {% elif history_priority_filter == "normal" %}Normal
+                  {% elif history_priority_filter == "high" %}High
+                  {% else %}All Priorities{% endif %}
+                </span>
+              </button>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not history_priority_filter %}selected{% endif %}" data-value="">All Priorities</div>
+                <div class="custom-option {% if history_priority_filter == 'low' %}selected{% endif %}" data-value="low">Low</div>
+                <div class="custom-option {% if history_priority_filter == 'normal' %}selected{% endif %}" data-value="normal">Normal</div>
+                <div class="custom-option {% if history_priority_filter == 'high' %}selected{% endif %}" data-value="high">High</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="history_supplier_id">Supplier</label>
+            <div class="custom-select" data-select>
+              <input type="hidden" name="history_supplier_id" id="history_supplier_id" value="{{ history_supplier_filter }}">
+              <button type="button" class="custom-select-trigger">
+                <span>
+                  {% set history_supplier_label = namespace(name='All Suppliers') %}
+                  {% for supplier in supplier_options %}
+                    {% if history_supplier_filter and history_supplier_filter|int == supplier[0] %}
+                      {% set history_supplier_label.name = supplier[1] %}
+                    {% endif %}
+                  {% endfor %}
+                  {{ history_supplier_label.name }}
+                </span>
+              </button>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not history_supplier_filter %}selected{% endif %}" data-value="">All Suppliers</div>
+                {% for supplier in supplier_options %}
+                  <div class="custom-option {% if history_supplier_filter and history_supplier_filter|int == supplier[0] %}selected{% endif %}" data-value="{{ supplier[0] }}">
+                    {{ supplier[1] }}
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions procurement-form-actions">
+          <button type="submit" class="dashboard-btn primary">Apply History Filters</button>
+          <a href="{{ url_for('purchase_requests', show_history='1') }}" class="dashboard-btn secondary">Reset History</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-table-card section-spacing">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Archive</span>
+      <h4>Request History</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table procurement-table">
+      <thead>
+        <tr>
+          <th>Request</th>
+          <th>Supplier</th>
+          <th>Qty</th>
+          <th>Priority</th>
+          <th>Requester</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% if archived_requests %}
+          {% for request_row in archived_requests %}
+            {% set request_id = request_row[0] %}
+            {% set request_number = request_row[2] %}
+            {% set title = request_row[5] %}
+            {% set quantity = request_row[7] %}
+            {% set unit = request_row[8] %}
+            {% set status = request_row[9] %}
+            {% set priority = request_row[10] %}
+            {% set supplier_name = request_row[18] %}
+            {% set requester_name = request_row[19] %}
+            {% set item_name = request_row[20] %}
+            {% set source_type = request_row[22] %}
+            {% set order_number = request_row[23] %}
+
+            <tr>
+              <td data-label="Request">
+                <div class="product-cell">
+                  <strong>
+                    {% if source_type == "shortage" and order_number %}
+                      {{ order_number }}
+                    {% elif request_number %}
+                      {{ request_number }}
+                    {% else %}
+                      Request #{{ request_id }}
+                    {% endif %}
+                  </strong>
+                  <span class="product-sub">
+                    {{ title if title else "Untitled request" }}
+                    {% if item_name %}
+                      · {{ item_name }}
+                    {% endif %}
+                  </span>
+                </div>
+              </td>
+
+              <td data-label="Supplier">{{ supplier_name if supplier_name else "—" }}</td>
+              <td data-label="Qty">{{ quantity }} {{ unit if unit else "" }}</td>
+
+              <td data-label="Priority">
+                {% if priority == "high" %}
+                  <span class="status-badge delayed">High</span>
+                {% elif priority == "low" %}
+                  <span class="status-badge completed">Low</span>
+                {% else %}
+                  <span class="status-badge waiting">Normal</span>
+                {% endif %}
+              </td>
+
+              <td data-label="Requester">{{ requester_name if requester_name else "—" }}</td>
+
+              <td data-label="Status">
+                {% if status == "received" %}
+                  <span class="status-badge completed">Received</span>
+                {% elif status == "cancelled" %}
+                  <span class="status-badge delayed">Cancelled</span>
+                {% elif status == "rejected" %}
+                  <span class="status-badge delayed">Rejected</span>
+                {% else %}
+                  <span class="status-badge">{{ status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-table-message">No request history found.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

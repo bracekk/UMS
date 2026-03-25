@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}UMS | Edit Product{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Products</span>
+    <h1>Edit Product</h1>
+    <p>Update product details, group assignment and core manufacturing settings.</p>
+  </div>
+  <div class="jobs-header-right">
+    <a href="{{ url_for('products') }}" class="dashboard-btn secondary">Back to Products</a>
+  </div>
+</div>
+
+<div class="dashboard-form-card section-spacing product-form-card">
+  <form method="POST" class="order-form product-edit-form">
+    <div class="form-grid form-grid-2">
+      <div class="form-group">
+        <label for="product_code">Product Code</label>
+        <input
+          type="text"
+          id="product_code"
+          name="product_code"
+          value="{{ request.form.get('product_code', product.product_code) }}"
+          required
+          placeholder="Enter product code"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="product_name">Product Name</label>
+        <input
+          type="text"
+          id="product_name"
+          name="product_name"
+          value="{{ request.form.get('product_name', product.product_name) }}"
+          required
+          placeholder="Enter product name"
+        >
+      </div>
+
+      <div class="form-group">
+        <label>Product Group</label>
+        {% set current_group_id = request.form.get('group_id', product.group_id if product.group_id is not none else '') %}
+        <div class="custom-select" data-name="group_id" id="editProductGroupSelect">
+          <div class="custom-select-trigger" tabindex="0" role="button" aria-label="Select product group">
+            <span>
+              {% if current_group_id|string %}
+                {% set ns = namespace(name='Ungrouped') %}
+                {% for group in product_groups %}
+                  {% if current_group_id|string == group.id|string %}
+                    {% set ns.name = group.name %}
+                  {% endif %}
+                {% endfor %}
+                {{ ns.name }}
+              {% else %}
+                Ungrouped
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="custom-options">
+            <div class="custom-option {% if not current_group_id|string %}selected{% endif %}" data-value="">
+              Ungrouped
+            </div>
+            {% for group in product_groups %}
+              <div
+                class="custom-option {% if current_group_id|string == group.id|string %}selected{% endif %}"
+                data-value="{{ group.id }}"
+              >
+                {{ group.name }}
+              </div>
+            {% endfor %}
+          </div>
+
+          <input type="hidden" name="group_id" value="{{ current_group_id }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="measurement_unit">Measurement Unit</label>
+        <input
+          type="text"
+          id="measurement_unit"
+          name="measurement_unit"
+          value="{{ request.form.get('measurement_unit', product.measurement_unit) }}"
+          required
+          placeholder="pcs / m2 / set"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="time_per_unit">Time per Unit (min)</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          id="time_per_unit"
+          name="time_per_unit"
+          value="{{ request.form.get('time_per_unit', product.time_per_unit) }}"
+          required
+          placeholder="0"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="stock_quantity">Stock Quantity</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          id="stock_quantity"
+          name="stock_quantity"
+          value="{{ request.form.get('stock_quantity', product.stock_quantity) }}"
+          required
+          placeholder="0"
+        >
+      </div>
+
+      <div class="form-group form-group-full">
+        <label for="description">Description</label>
+        <textarea
+          id="description"
+          name="description"
+          rows="6"
+          placeholder="Optional description"
+        >{{ request.form.get('description', product.description or '') }}</textarea>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('products') }}" class="dashboard-btn secondary">Cancel</a>
+      <button type="submit" class="dashboard-btn primary">Save Changes</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

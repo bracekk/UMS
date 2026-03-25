@@ -1,0 +1,271 @@
+{% extends "base.html" %} {% block title %}UMS | Inventory{% endblock %} {%
+block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Inventory</span>
+    <h1>Inventory</h1>
+    <p>
+      Track stock, reservations, availability and replenishment across raw items
+      and finished products.
+    </p>
+  </div>
+</div>
+
+<div class="dashboard-stats">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Items Stock Value</span>
+    <strong>{{ "%.2f"|format(total_items_value) }}</strong>
+    <span class="stat-meta">Current item inventory value</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Products Stock Value</span>
+    <strong>{{ "%.2f"|format(total_products_value) }}</strong>
+    <span class="stat-meta">Current finished goods value</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Items Count</span>
+    <strong>{{ items_inventory|length }}</strong>
+    <span class="stat-meta">Tracked raw items</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Products Count</span>
+    <strong>{{ products_inventory|length }}</strong>
+    <span class="stat-meta">Tracked finished products</span>
+  </div>
+</div>
+
+<div class="dashboard-table-card inventory-tabs-card">
+  <div class="inventory-tabs-header">
+    <button type="button" class="inventory-tab-btn active" data-tab="items-tab">
+      Items Stock
+    </button>
+    <button type="button" class="inventory-tab-btn" data-tab="products-tab">
+      Products Stock
+    </button>
+  </div>
+
+  <div id="items-tab" class="inventory-tab-panel active">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Items</span>
+        <h4>Items Inventory</h4>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="orders-table inventory-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Unit</th>
+            <th>On Hand</th>
+            <th>Reserved</th>
+            <th>Available</th>
+            <th>Min Stock</th>
+            <th>Unit Price</th>
+            <th>Stock Value</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if items_inventory %} {% for item in items_inventory %}
+          <tr>
+            <td data-label="Item">
+              <div class="product-cell">
+                <strong>{{ item.item_name }}</strong>
+                <span class="product-sub">{{ item.item_code }}</span>
+              </div>
+            </td>
+
+            <td data-label="Unit">{{ item.measurement_unit }}</td>
+
+            <td data-label="On Hand">
+              {% if item.stock_quantity <= 0 %}
+              <span class="stock-badge danger">{{ item.stock_quantity }}</span>
+              {% elif item.stock_status == "Low" %}
+              <span class="stock-badge warning">{{ item.stock_quantity }}</span>
+              {% else %}
+              <span class="stock-badge ok">{{ item.stock_quantity }}</span>
+              {% endif %}
+            </td>
+
+            <td data-label="Reserved">
+              <strong>{{ item.reserved_quantity }}</strong>
+            </td>
+
+            <td data-label="Available">
+              <strong>{{ item.available_quantity }}</strong>
+            </td>
+
+            <td data-label="Min Stock">{{ item.min_stock }}</td>
+
+            <td data-label="Unit Price">
+              {{ "%.2f"|format(item.unit_price) }}
+            </td>
+
+            <td data-label="Stock Value">
+              {{ "%.2f"|format(item.stock_value) }}
+            </td>
+
+            <td data-label="Status">
+              {% if item.stock_status == "OK" %}
+              <span class="status-badge completed">OK</span>
+              {% elif item.stock_status == "Low" %}
+              <span class="status-badge waiting">Low</span>
+              {% else %}
+              <span class="status-badge delayed">Out</span>
+              {% endif %}
+            </td>
+
+            <td
+              data-label="Actions"
+              class="actions-cell inventory-actions-cell"
+            >
+              <form
+                method="POST"
+                action="{{ url_for('add_item_stock', item_id=item.id) }}"
+                class="inventory-inline-form inventory-inline-form-compact"
+              >
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  name="add_quantity"
+                  placeholder="+ stock"
+                  required
+                />
+                <button
+                  type="submit"
+                  class="table-action-btn btn-edit action-btn-compact"
+                >
+                  Add
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %} {% else %}
+          <tr>
+            <td colspan="10" class="empty-table-message">
+              No item inventory found.
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="products-tab" class="inventory-tab-panel">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Products</span>
+        <h4>Products Inventory</h4>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="orders-table inventory-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Unit</th>
+            <th>Stock</th>
+            <th>Material Cost / Unit</th>
+            <th>Total Stock Value</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if products_inventory %} {% for product in products_inventory %}
+          <tr>
+            <td data-label="Product">
+              <div class="product-cell">
+                <strong>{{ product.product_name }}</strong>
+                <span class="product-sub">{{ product.product_code }}</span>
+              </div>
+            </td>
+
+            <td data-label="Unit">{{ product.measurement_unit }}</td>
+
+            <td data-label="Stock">
+              {% if product.stock_quantity <= 0 %}
+              <span class="stock-badge danger">0</span>
+              {% elif product.stock_quantity < 10 %}
+              <span class="stock-badge warning"
+                >{{ product.stock_quantity }}</span
+              >
+              {% else %}
+              <span class="stock-badge ok">{{ product.stock_quantity }}</span>
+              {% endif %}
+            </td>
+
+            <td data-label="Material Cost / Unit">
+              {{ "%.2f"|format(product.material_cost_per_unit) }}
+            </td>
+
+            <td data-label="Total Stock Value">
+              {{ "%.2f"|format(product.stock_value) }}
+            </td>
+
+            <td
+              data-label="Actions"
+              class="actions-cell inventory-actions-cell"
+            >
+              <form
+                method="POST"
+                action="{{ url_for('add_product_stock', product_id=product.id) }}"
+                class="inventory-inline-form inventory-inline-form-compact"
+              >
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  name="add_quantity"
+                  placeholder="+ stock"
+                  required
+                />
+                <button
+                  type="submit"
+                  class="table-action-btn btn-edit action-btn-compact"
+                >
+                  Add
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %} {% else %}
+          <tr>
+            <td colspan="6" class="empty-table-message">
+              No product inventory found.
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const buttons = document.querySelectorAll(".inventory-tab-btn");
+    const panels = document.querySelectorAll(".inventory-tab-panel");
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = button.dataset.tab;
+
+        buttons.forEach((btn) => btn.classList.remove("active"));
+        panels.forEach((panel) => panel.classList.remove("active"));
+
+        button.classList.add("active");
+        document.getElementById(target).classList.add("active");
+      });
+    });
+  });
+</script>
+{% endblock %}

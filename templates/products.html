@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Products{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Products</span>
+    <h1>Products</h1>
+    <p>Manage finished products, group them cleanly, and see materials, jobs and total unit cost in one view.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('product_groups') }}" class="dashboard-btn secondary">New Product Group</a>
+    <a href="{{ url_for('new_product') }}" class="dashboard-btn primary">New Product</a>
+  </div>
+</div>
+
+<div class="group-filter-pills section-spacing">
+  <a href="{{ url_for('products', product_code=filters.product_code, product_name=filters.product_name) }}" class="group-filter-pill {% if not filters.group_id %}active{% endif %}">All</a>
+  {% for group in product_groups %}
+    <a href="{{ url_for('products', product_code=filters.product_code, product_name=filters.product_name, group_id=group.id) }}" class="group-filter-pill {% if filters.group_id|string == group.id|string %}active{% endif %}">{{ group.name }}</a>
+  {% endfor %}
+</div>
+
+<div class="filters-wrapper section-spacing">
+  <button type="button" class="filters-toggle-btn" aria-expanded="false">Filters</button>
+  <div class="filters-panel filters-collapsed">
+    <div class="dashboard-form-card jobs-filter-card">
+      <form method="GET" action="{{ url_for('products') }}" class="order-form">
+        <div class="jobs-filter-grid jobs-filter-grid-compact">
+          <div class="form-group">
+            <label for="product_code">Product Code</label>
+            <input type="text" id="product_code" name="product_code" value="{{ filters.product_code }}" placeholder="Product code">
+          </div>
+
+          <div class="form-group">
+            <label for="product_name">Product</label>
+            <input type="text" id="product_name" name="product_name" value="{{ filters.product_name }}" placeholder="Product name">
+          </div>
+
+          <div class="form-group">
+            <label>Group</label>
+            <div class="custom-select" data-name="group_id" id="productsGroupFilterSelect">
+              <div class="custom-select-trigger" tabindex="0" role="button">
+                <span>
+                  {% if filters.group_id %}
+                    {% set ns = namespace(name='All groups') %}
+                    {% for group in product_groups %}
+                      {% if filters.group_id|string == group.id|string %}
+                        {% set ns.name = group.name %}
+                      {% endif %}
+                    {% endfor %}
+                    {{ ns.name }}
+                  {% else %}
+                    All groups
+                  {% endif %}
+                </span>
+              </div>
+
+              <div class="custom-options">
+                <div class="custom-option {% if not filters.group_id %}selected{% endif %}" data-value="">All groups</div>
+                {% for group in product_groups %}
+                  <div class="custom-option {% if filters.group_id|string == group.id|string %}selected{% endif %}" data-value="{{ group.id }}">
+                    {{ group.name }}
+                  </div>
+                {% endfor %}
+              </div>
+
+              <input type="hidden" name="group_id" value="{{ filters.group_id or '' }}">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="dashboard-btn primary">Apply Filters</button>
+          <a href="{{ url_for('products') }}" class="dashboard-btn secondary">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-table-card">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Catalog</span>
+      <h4>All Products</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table products-table products-cost-table">
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Group</th>
+          <th>Unit</th>
+          <th>Time / Unit</th>
+          <th>Stock</th>
+          <th>Materials</th>
+          <th>Jobs</th>
+          <th>Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if products %}
+          {% for product in products %}
+            <tr>
+              <td data-label="Product">
+                <div class="product-cell">
+                  <strong>{{ product.product_name }}</strong>
+                  <span class="product-sub">{{ product.product_code }}</span>
+                </div>
+              </td>
+
+              <td data-label="Group">
+                <span class="group-badge">{{ product.group_name }}</span>
+              </td>
+
+              <td data-label="Unit">{{ product.measurement_unit }}</td>
+              <td data-label="Time / Unit">{{ product.time_per_unit }} min</td>
+
+              <td data-label="Stock">
+                {% if product.stock_quantity <= 0 %}
+                  <span class="stock-badge danger">Out</span>
+                {% elif product.stock_quantity < 10 %}
+                  <span class="stock-badge warning">{{ product.stock_quantity }}</span>
+                {% else %}
+                  <span class="stock-badge ok">{{ product.stock_quantity }}</span>
+                {% endif %}
+              </td>
+
+              <td data-label="Materials">€ {{ '%.2f'|format(product.materials_cost) }}</td>
+              <td data-label="Jobs">€ {{ '%.2f'|format(product.jobs_cost) }}</td>
+              <td data-label="Total"><strong>€ {{ '%.2f'|format(product.total_cost) }}</strong></td>
+
+              <td data-label="Actions" class="actions-cell product-actions-cell">
+                <a href="{{ url_for('product_jobs', product_id=product.id) }}" class="table-action-btn btn-neutral action-btn-compact">Jobs</a>
+                <a href="{{ url_for('product_bom', product_id=product.id) }}" class="table-action-btn btn-neutral action-btn-compact">BOM</a>
+                <a href="{{ url_for('product_cost', product_id=product.id) }}" class="table-action-btn btn-neutral action-btn-compact">Cost</a>
+                <a href="{{ url_for('edit_product', product_id=product.id) }}" class="table-action-btn btn-edit action-btn-compact">Edit</a>
+                <form method="POST" action="{{ url_for('delete_product', product_id=product.id) }}" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this product?');">
+                  <button type="submit" class="table-action-btn btn-delete action-btn-compact">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" class="empty-table-message">No products found.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

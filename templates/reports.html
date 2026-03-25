@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Reports{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Reporting</span>
+    <h1>Production Reports</h1>
+    <p>Track scrap, waste, defects and operational reporting from active production jobs.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('new_report') }}" class="dashboard-btn primary">New Report</a>
+  </div>
+</div>
+
+<div class="dashboard-stats">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Scrap</span>
+    <strong>{{ total_scrap }}</strong>
+    <span class="stat-meta">Total reported scrap quantity</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Waste</span>
+    <strong>{{ total_waste }}</strong>
+    <span class="stat-meta">Total reported waste quantity</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Defects</span>
+    <strong>{{ total_defect }}</strong>
+    <span class="stat-meta">Total reported defect quantity</span>
+  </div>
+
+  <div class="stat-card">
+    <span class="stat-label">Entries</span>
+    <strong>{{ reports|length }}</strong>
+    <span class="stat-meta">Recorded production reports</span>
+  </div>
+</div>
+
+<div class="filters-wrapper section-spacing">
+  <button type="button" class="filters-toggle-btn" aria-expanded="false">
+    Filters
+  </button>
+
+  <div class="filters-panel filters-collapsed">
+    <div class="dashboard-form-card jobs-filter-card">
+      <form method="GET" action="{{ url_for('reports') }}" class="order-form">
+        <div class="jobs-filter-grid jobs-filter-grid-compact">
+          <div class="form-group">
+            <label for="report_type">Report Type</label>
+            <select id="report_type" name="report_type">
+              <option value="">All</option>
+              <option value="scrap" {% if filters.report_type == 'scrap' %}selected{% endif %}>Scrap</option>
+              <option value="waste" {% if filters.report_type == 'waste' %}selected{% endif %}>Waste</option>
+              <option value="defect" {% if filters.report_type == 'defect' %}selected{% endif %}>Defect</option>
+              <option value="note" {% if filters.report_type == 'note' %}selected{% endif %}>Note</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="job_search">Job / Order / Product / Workstation</label>
+            <input type="text" id="job_search" name="job_search" value="{{ filters.job_search }}" placeholder="Search reports">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="dashboard-btn primary">Apply Filters</button>
+          <a href="{{ url_for('reports') }}" class="dashboard-btn secondary">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-table-card">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Records</span>
+      <h4>All Reports</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table reports-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Order</th>
+          <th>Product</th>
+          <th>Job</th>
+          <th>Workstation</th>
+          <th>Quantity</th>
+          <th>Reported By</th>
+          <th>Created</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if reports %}
+          {% for report in reports %}
+            <tr>
+              <td data-label="Type">
+                {% if report.report_type == "scrap" %}
+                  <span class="status-badge delayed">Scrap</span>
+                {% elif report.report_type == "waste" %}
+                  <span class="status-badge waiting">Waste</span>
+                {% elif report.report_type == "defect" %}
+                  <span class="status-badge in-progress">Defect</span>
+                {% else %}
+                  <span class="status-badge completed">Note</span>
+                {% endif %}
+              </td>
+
+              <td data-label="Order"><strong>{{ report.order_number }}</strong></td>
+              <td data-label="Product">{{ report.product_name }}</td>
+              <td data-label="Job">{{ report.job_name }}</td>
+              <td data-label="Workstation">{{ report.workstation_name }}</td>
+              <td data-label="Quantity"><strong>{{ report.quantity }} {{ report.unit }}</strong></td>
+              <td data-label="Reported By">{{ report.reported_by_name }}</td>
+              <td data-label="Created">{{ report.created_at }}</td>
+              <td data-label="Notes" class="product-description-cell" title="{{ report.notes if report.notes else '-' }}">
+                {{ report.notes if report.notes else "-" }}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" class="empty-table-message">No reports found.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

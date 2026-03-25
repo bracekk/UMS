@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}UMS | Workstations{% endblock %}
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Capacity</span>
+    <h1>Workstations</h1>
+    <p>Manage production stations, monthly capacity, real workload and cost per hour.</p>
+  </div>
+  <div class="jobs-header-right"><a href="{{ url_for('new_workstation') }}" class="dashboard-btn primary">New Workstation</a></div>
+</div>
+
+<div class="workstations-summary-grid section-spacing">
+  {% if workstations %}
+    {% set total_capacity = namespace(value=0) %}
+    {% set total_used = namespace(value=0) %}
+    {% set total_hourly_cost = namespace(value=0) %}
+    {% for workstation in workstations %}
+      {% set total_capacity.value = total_capacity.value + workstation.monthly_capacity %}
+      {% set total_used.value = total_used.value + workstation.used_load %}
+      {% set total_hourly_cost.value = total_hourly_cost.value + workstation.cost_per_hour %}
+    {% endfor %}
+    <div class="stat-card stat-card-accent"><span class="stat-label">Total Capacity</span><strong>{{ total_capacity.value | round(2) }}</strong><span class="stat-meta">Available monthly hours</span></div>
+    <div class="stat-card"><span class="stat-label">Used Load</span><strong>{{ total_used.value | round(2) }}</strong><span class="stat-meta">Assigned production hours</span></div>
+    <div class="stat-card"><span class="stat-label">Free Load</span><strong>{{ (total_capacity.value - total_used.value) | round(2) }}</strong><span class="stat-meta">Remaining monthly hours</span></div>
+    <div class="stat-card"><span class="stat-label">Avg Cost / Hour</span><strong>€ {{ ((total_hourly_cost.value / workstations|length) if workstations else 0) | round(2) }}</strong><span class="stat-meta">Financial planning baseline</span></div>
+  {% else %}
+    <div class="stat-card stat-card-accent"><span class="stat-label">Workstations</span><strong>0</strong><span class="stat-meta">No resources created yet</span></div>
+  {% endif %}
+</div>
+
+<div class="workstations-list">
+  {% if workstations %}
+    {% for workstation in workstations %}
+      {% set percent = (workstation.used_load / workstation.monthly_capacity * 100) if workstation.monthly_capacity > 0 else 0 %}
+      {% set safe_percent = percent if percent < 100 else 100 %}
+      {% if percent > 100 %}{% set load_class = 'danger' %}{% elif percent > 80 %}{% set load_class = 'warning' %}{% else %}{% set load_class = 'success' %}{% endif %}
+      <article class="workstation-card">
+        <div class="workstation-card-top">
+          <div class="workstation-main"><div class="workstation-title-row"><div class="color-chip-wrap"><span class="color-chip workstation-color-chip" style="background: {{ workstation.color }};"></span></div><div><h3>{{ workstation.name }}</h3><p>{{ workstation.description if workstation.description else 'No description provided.' }}</p></div></div></div>
+          <div class="workstation-top-meta"><span class="capacity-pill {{ load_class }}">{{ percent | round(1) }}% utilized</span></div>
+        </div>
+        <div class="workstation-capacity-block"><div class="workstation-capacity-head"><span>Monthly load</span><strong>{{ workstation.used_load | round(2) }} / {{ workstation.monthly_capacity | round(2) }} h</strong></div><div class="progress-track workstation-progress-lg"><div class="progress-fill workstation-progress-fill" style="width: {{ safe_percent }}%;"></div></div></div>
+        <div class="workstation-metrics-grid">
+          <div class="workstation-metric"><span class="job-mini-label">Hours / Shift</span><strong>{{ workstation.hours_per_shift }}</strong></div>
+          <div class="workstation-metric"><span class="job-mini-label">Shifts / Day</span><strong>{{ workstation.shifts_per_day }}</strong></div>
+          <div class="workstation-metric"><span class="job-mini-label">Days / Month</span><strong>{{ workstation.working_days_per_month }}</strong></div>
+          <div class="workstation-metric"><span class="job-mini-label">Capacity</span><strong>{{ workstation.monthly_capacity | round(2) }} h</strong></div>
+          <div class="workstation-metric"><span class="job-mini-label">Cost / Hour</span><strong>€ {{ '%.2f'|format(workstation.cost_per_hour) }}</strong></div>
+          <div class="workstation-metric"><span class="job-mini-label">Used</span><strong>{{ workstation.used_load | round(2) }} h</strong></div>
+          <div class="workstation-metric"><span class="job-mini-label">Free</span>{% if workstation.free_load < 0 %}<strong class="metric-danger">{{ workstation.free_load | round(2) }} h</strong>{% elif workstation.free_load < (workstation.monthly_capacity * 0.3) %}<strong class="metric-warning">{{ workstation.free_load | round(2) }} h</strong>{% else %}<strong class="metric-success">{{ workstation.free_load | round(2) }} h</strong>{% endif %}</div>
+        </div>
+        <div class="workstation-card-actions"><a href="{{ url_for('edit_workstation', workstation_id=workstation.id) }}" class="table-action-btn btn-edit">Edit</a><form method="POST" action="{{ url_for('delete_workstation', workstation_id=workstation.id) }}" class="inline-form" onsubmit="return confirm('Are you sure you want to delete this workstation?');"><button type="submit" class="table-action-btn btn-delete">Delete</button></form></div>
+      </article>
+    {% endfor %}
+  {% else %}
+    <div class="dashboard-table-card"><div class="empty-table-message">No workstations found.</div></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | New User{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Administration</span>
+    <h1>New User</h1>
+    <p>Create a company user and define role-based access with custom permissions.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('users') }}" class="dashboard-btn secondary">Back to Users</a>
+  </div>
+</div>
+
+<div class="dashboard-content-grid section-spacing">
+  <div class="dashboard-form-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Profile</span>
+        <h4>User Details</h4>
+      </div>
+    </div>
+
+    <form method="POST" class="order-form">
+      <div class="form-grid">
+        <div class="form-group floating-group">
+          <input type="text" id="full_name" name="full_name" placeholder=" " required>
+          <label for="full_name">Full Name</label>
+        </div>
+
+        <div class="form-group floating-group">
+          <input type="email" id="email" name="email" placeholder=" " required>
+          <label for="email">Email</label>
+        </div>
+
+        <div class="form-group floating-group">
+          <input type="password" id="password" name="password" placeholder=" " required>
+          <label for="password">Password</label>
+        </div>
+
+        <div class="form-group floating-group">
+          <input type="password" id="confirm_password" name="confirm_password" placeholder=" " required>
+          <label for="confirm_password">Confirm Password</label>
+        </div>
+
+        <div class="form-group">
+          <label>Role</label>
+
+          <div class="custom-select">
+            <div class="custom-select-trigger" tabindex="0">
+              <span>Worker</span>
+            </div>
+
+            <div class="custom-options">
+              <div class="custom-option" data-value="admin">Admin</div>
+              <div class="custom-option" data-value="manager">Manager</div>
+              <div class="custom-option" data-value="worker">Worker</div>
+            </div>
+
+            <input type="hidden" name="role" value="worker">
+          </div>
+        </div>
+
+        <div class="form-group form-group-full">
+          <div class="new-user-role-note">
+            <strong>Tip:</strong> start with a base role, then fine-tune permissions below.
+          </div>
+        </div>
+
+        <div class="form-group form-group-full">
+          <div class="card-header compact">
+            <div>
+              <span class="card-kicker">Access</span>
+              <h4>Permissions</h4>
+            </div>
+          </div>
+
+          <div class="permission-groups">
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Orders</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_view_orders" value="1">
+                  <span>View orders</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_orders" value="1">
+                  <span>Manage orders</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Jobs</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_view_jobs" value="1">
+                  <span>View jobs</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_update_job_progress" value="1">
+                  <span>Update job progress</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_jobs" value="1">
+                  <span>Manage jobs</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Inventory</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_view_inventory" value="1">
+                  <span>View inventory</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_inventory" value="1">
+                  <span>Manage inventory</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Products &amp; Items</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_view_products" value="1">
+                  <span>View products</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_products" value="1">
+                  <span>Manage products</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_view_items" value="1">
+                  <span>View items</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_items" value="1">
+                  <span>Manage items</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Workstations</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_view_workstations" value="1">
+                  <span>View workstations</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_workstations" value="1">
+                  <span>Manage workstations</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Reports &amp; Export</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_view_reports" value="1">
+                  <span>View reports</span>
+                </label>
+
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_export_data" value="1">
+                  <span>Export data</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Administration</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_users" value="1">
+                  <span>Manage users</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="permission-group-card">
+              <div class="permission-group-title">Procurement</div>
+              <div class="permission-check-grid">
+                <label class="permission-check">
+                  <input type="checkbox" name="perm_manage_procurement" value="1">
+                  <span>Manage procurement</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <a href="{{ url_for('users') }}" class="dashboard-btn secondary">Cancel</a>
+        <button type="submit" class="dashboard-btn primary">Create User</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="dashboard-form-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Guide</span>
+        <h4>Access Setup</h4>
+      </div>
+    </div>
+
+    <div class="permission-groups">
+      <div class="permission-group-card">
+        <div class="permission-group-title">Admin</div>
+        <p class="subtle-meta">Use for full company control, user management and configuration.</p>
+      </div>
+
+      <div class="permission-group-card">
+        <div class="permission-group-title">Manager</div>
+        <p class="subtle-meta">Use for operations, orders, jobs, inventory and reporting.</p>
+      </div>
+
+      <div class="permission-group-card">
+        <div class="permission-group-title">Worker</div>
+        <p class="subtle-meta">Use for production floor access and job progress updates.</p>
+      </div>
+
+      <div class="permission-group-card">
+        <div class="permission-group-title">Custom Permissions</div>
+        <p class="subtle-meta">After choosing a role, enable only the extra access this user really needs.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

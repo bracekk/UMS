@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}UMS | Product Cost{% endblock %}
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Products</span>
+    <h1>Product Cost — {{ product.product_name }}</h1>
+    <p>Full unit cost split by materials and workstation jobs.</p>
+  </div>
+  <div class="jobs-header-right">
+    <a href="{{ url_for('products') }}" class="dashboard-btn secondary">Back to Products</a>
+  </div>
+</div>
+
+<div class="dashboard-stats section-spacing cost-stat-grid">
+  <div class="stat-card stat-card-accent">
+    <span class="stat-label">Product Code</span>
+    <strong>{{ product.product_code }}</strong>
+    <span class="stat-meta">{{ product.group_name }}</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Material Cost / Unit</span>
+    <strong>€ {{ '%.2f'|format(total_material_cost) }}</strong>
+    <span class="stat-meta">Full BOM material value</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Jobs Cost / Unit</span>
+    <strong>€ {{ '%.2f'|format(total_jobs_cost) }}</strong>
+    <span class="stat-meta">Workstation routing cost</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Total Cost / Unit</span>
+    <strong>€ {{ '%.2f'|format(total_cost) }}</strong>
+    <span class="stat-meta">Materials + jobs</span>
+  </div>
+</div>
+
+<div class="dashboard-table-card section-spacing">
+  <div class="card-header"><div><span class="card-kicker">Costing</span><h4>Material Cost Breakdown</h4></div></div>
+  <div class="table-wrapper">
+    <table class="orders-table product-flow-table">
+      <thead><tr><th>Item</th><th>Unit</th><th>Qty / 1 Unit</th><th>Unit Price</th><th>Total Cost</th></tr></thead>
+      <tbody>
+        {% if materials %}
+          {% for m in materials %}
+            <tr>
+              <td><div class="product-cell"><strong>{{ m.item_name }}</strong><span class="product-sub">{{ m.item_code }}</span></div></td>
+              <td>{{ m.unit }}</td>
+              <td>{{ m.quantity_per_unit }}</td>
+              <td>€ {{ '%.2f'|format(m.unit_price) }}</td>
+              <td><strong>€ {{ '%.2f'|format(m.total_cost) }}</strong></td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="5" class="empty-table-message">No BOM found for this product.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="dashboard-table-card">
+  <div class="card-header"><div><span class="card-kicker">Routing</span><h4>Job Cost Breakdown</h4></div></div>
+  <div class="table-wrapper">
+    <table class="orders-table product-flow-table">
+      <thead><tr><th>Seq</th><th>Job</th><th>Workstation</th><th>Hours / Unit</th><th>Cost / Hour</th><th>Job Cost</th></tr></thead>
+      <tbody>
+        {% if jobs %}
+          {% for job in jobs %}
+            <tr>
+              <td>{{ job.sequence }}</td>
+              <td><strong>{{ job.job_name }}</strong></td>
+              <td>{{ job.workstation_name }}</td>
+              <td>{{ job.estimated_hours }}</td>
+              <td>€ {{ '%.2f'|format(job.workstation_cost_per_hour) }}</td>
+              <td><strong>€ {{ '%.2f'|format(job.job_cost) }}</strong></td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="6" class="empty-table-message">No product jobs found for this product.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

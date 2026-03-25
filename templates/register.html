@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UMS | Register</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+</head>
+<body class="auth-body">
+  <div class="auth-page">
+    <div class="auth-shell auth-shell-compact auth-shell-register">
+      <a href="{{ url_for('home') }}" class="auth-logo">
+        <span class="auth-logo-u">U</span><span class="auth-logo-m">M</span><span class="auth-logo-s">S</span>
+      </a>
+
+      <div class="auth-header">
+        <span class="auth-badge">Register</span>
+        <h1>Create your account</h1>
+        <p>Set up your production workspace.</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="auth-flash-stack">
+            {% for category, message in messages %}
+              <div class="auth-flash auth-flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% if error %}
+        <div class="auth-flash auth-flash-error">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" class="auth-form auth-form-grid">
+        <div class="auth-field">
+          <label for="full_name">Full Name</label>
+          <input
+            type="text"
+            id="full_name"
+            name="full_name"
+            placeholder="Your full name"
+            autocomplete="name"
+            required
+          >
+        </div>
+
+        <div class="auth-field">
+          <label for="company">Company</label>
+          <input
+            type="text"
+            id="company"
+            name="company"
+            placeholder="Your company"
+            autocomplete="organization"
+            required
+          >
+        </div>
+
+        <div class="auth-field auth-field-full">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="name@company.com"
+            autocomplete="email"
+            required
+          >
+        </div>
+
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Create a password"
+            autocomplete="new-password"
+            required
+          >
+        </div>
+
+        <div class="auth-field">
+          <label for="confirm_password">Confirm Password</label>
+          <input
+            type="password"
+            id="confirm_password"
+            name="confirm_password"
+            placeholder="Repeat your password"
+            autocomplete="new-password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="auth-btn auth-btn-primary auth-btn-full">Create Account</button>
+      </form>
+
+      <div class="auth-divider">
+        <span>Already registered?</span>
+      </div>
+
+      <p class="auth-footer-text">
+        Already have an account?
+        <a href="{{ url_for('login') }}">Login</a>
+      </p>
+
+      <a href="{{ url_for('home') }}" class="auth-back-link">Back to landing page</a>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}UMS | Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div class="dashboard-header-left">
+    <span class="eyebrow-label">Overview</span>
+    <h1>Production Dashboard</h1>
+    <p>Live production overview across orders, capacity and execution.</p>
+  </div>
+
+  <div class="dashboard-header-right dashboard-header-actions-advanced">
+    <div class="dashboard-layout-mode-pill" id="dashboardLayoutModePill">
+      <span class="dashboard-layout-mode-dot"></span>
+      <span id="dashboardLayoutModeText">Organized view</span>
+    </div>
+
+    <button type="button" class="dashboard-btn secondary" id="dashboardCustomizeBtn">
+      Customize Layout
+    </button>
+
+    <button type="button" class="dashboard-btn secondary" id="dashboardResetBtn">
+      Reset
+    </button>
+
+    <button type="button" class="dashboard-btn secondary" id="dashboardExportBtn">
+      Export
+    </button>
+
+    <a href="{{ url_for('new_order') }}" class="dashboard-btn primary">New Order</a>
+  </div>
+</div>
+
+<div
+  class="dashboard-canvas-shell"
+  id="dashboardCanvasShell"
+  data-save-url="{{ url_for('save_dashboard_layout') }}"
+  data-default-layout='[
+    {"id":"orders_active","x":0,"y":0,"w":330,"h":112},
+    {"id":"delayed_jobs","x":346,"y":0,"w":330,"h":112},
+    {"id":"waiting_orders","x":692,"y":0,"w":330,"h":112},
+    {"id":"completed_orders","x":1038,"y":0,"w":330,"h":112},
+
+    {"id":"recent_orders","x":0,"y":136,"w":860,"h":350},
+    {"id":"order_summary","x":876,"y":136,"w":492,"h":220},
+
+    {"id":"workstation_load","x":0,"y":502,"w":680,"h":260},
+    {"id":"quick_links","x":696,"y":502,"w":672,"h":260}
+  ]'
+>
+  <div class="dashboard-canvas-grid"></div>
+
+  <div class="dashboard-canvas" id="dashboardCanvas">
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-3"
+      data-widget-id="orders_active"
+      data-organized-order="1"
+    >
+      <div class="dashboard-widget-card stat-card stat-card-accent dashboard-kpi-card">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <span class="stat-label">Orders active</span>
+        <strong>{{ total_orders }}</strong>
+        <span class="stat-meta">Current production queue</span>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-3"
+      data-widget-id="delayed_jobs"
+      data-organized-order="2"
+    >
+      <div class="dashboard-widget-card stat-card dashboard-kpi-card">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <span class="stat-label">Delayed jobs</span>
+        <strong>{{ delayed_count }}</strong>
+        <span class="stat-meta">Need attention first</span>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-3"
+      data-widget-id="waiting_orders"
+      data-organized-order="3"
+    >
+      <div class="dashboard-widget-card stat-card dashboard-kpi-card">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <span class="stat-label">Waiting orders</span>
+        <strong>{{ waiting_count }}</strong>
+        <span class="stat-meta">Not started yet</span>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-3"
+      data-widget-id="completed_orders"
+      data-organized-order="4"
+    >
+      <div class="dashboard-widget-card stat-card dashboard-kpi-card">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <span class="stat-label">Completed</span>
+        <strong>{{ completed_count }}</strong>
+        <span class="stat-meta">Finished successfully</span>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-8"
+      data-widget-id="recent_orders"
+      data-organized-order="5"
+    >
+      <div class="dashboard-widget-card dashboard-table-card dashboard-main-table-card dashboard-table-widget">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <div class="card-header">
+          <div>
+            <span class="card-kicker">Activity</span>
+            <h4>Recent Orders</h4>
+          </div>
+          <a href="{{ url_for('orders') }}">View all</a>
+        </div>
+
+        <div class="table-wrapper freeform-scroll-area">
+          <table class="orders-table">
+            <thead>
+              <tr>
+                <th>Order</th>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Status</th>
+                <th>Due Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if recent_orders %}
+                {% for order in recent_orders %}
+                  {% set status_class = "" %}
+                  {% if order.status == "In Progress" %}
+                    {% set status_class = "in-progress" %}
+                  {% elif order.status == "Waiting" %}
+                    {% set status_class = "waiting" %}
+                  {% elif order.status == "Completed" %}
+                    {% set status_class = "completed" %}
+                  {% elif order.status == "Delayed" %}
+                    {% set status_class = "delayed" %}
+                  {% endif %}
+                  <tr>
+                    <td><strong>{{ order.order_number }}</strong></td>
+                    <td>{{ order.product_name }}</td>
+                    <td>{{ order.quantity }}</td>
+                    <td><span class="status-badge {{ status_class }}">{{ order.status }}</span></td>
+                    <td>{{ order.due_date }}</td>
+                  </tr>
+                {% endfor %}
+              {% else %}
+                <tr>
+                  <td colspan="5" class="empty-table-message">No recent orders found.</td>
+                </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-4"
+      data-widget-id="order_summary"
+      data-organized-order="6"
+    >
+      <div class="dashboard-widget-card mini-panel dashboard-summary-widget">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <div class="card-header compact">
+          <div>
+            <span class="card-kicker">Summary</span>
+            <h4>Order Summary</h4>
+          </div>
+        </div>
+
+        <ul class="summary-list">
+          <li><span>In Progress</span><strong>{{ in_progress_count }}</strong></li>
+          <li><span>Waiting</span><strong>{{ waiting_count }}</strong></li>
+          <li><span>Completed</span><strong>{{ completed_count }}</strong></li>
+          <li><span>Delayed</span><strong>{{ delayed_count }}</strong></li>
+        </ul>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-6"
+      data-widget-id="workstation_load"
+      data-organized-order="7"
+    >
+      <div class="dashboard-widget-card mini-panel dashboard-capacity-widget">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <div class="card-header compact">
+          <div>
+            <span class="card-kicker">Capacity</span>
+            <h4>Workstation Load</h4>
+          </div>
+        </div>
+
+        <div class="workstation-load-grid dashboard-ring-grid freeform-scroll-area">
+          {% if workstation_load %}
+            {% for workstation in workstation_load %}
+              {% set ring_percent = workstation.load_percent if workstation.load_percent < 100 else 100 %}
+              {% if workstation.load_percent > 100 %}
+                {% set ring_color = "#ef4444" %}
+              {% elif workstation.load_percent > 80 %}
+                {% set ring_color = "#f59e0b" %}
+              {% else %}
+                {% set ring_color = "#22c55e" %}
+              {% endif %}
+              <a href="{{ url_for('jobs', workstation=workstation.id) }}" class="load-ring-card dashboard-ring-card">
+                <div class="load-ring" style="background: conic-gradient({{ ring_color }} {{ ring_percent }}%, rgba(255,255,255,0.08) 0);">
+                  <strong>{{ workstation.load_percent }}%</strong>
+                </div>
+                <h6>{{ workstation.name }}</h6>
+                <p>{{ workstation.used_load }} / {{ workstation.monthly_capacity }} h</p>
+              </a>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state-note">No workstation load data available yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="dashboard-widget freeform-widget dashboard-widget-span-6"
+      data-widget-id="quick_links"
+      data-organized-order="8"
+    >
+      <div class="dashboard-widget-card mini-panel dashboard-links-widget">
+        <div class="widget-toolbar">
+          <button type="button" class="widget-drag-handle" aria-label="Drag widget">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+
+        <div class="widget-resize widget-resize-right" data-resize="x"></div>
+        <div class="widget-resize widget-resize-bottom" data-resize="y"></div>
+        <div class="widget-resize widget-resize-corner" data-resize="xy"></div>
+
+        <div class="card-header compact">
+          <div>
+            <span class="card-kicker">Actions</span>
+            <h4>Quick Links</h4>
+          </div>
+        </div>
+
+        <ul class="summary-list">
+          <li><span>Orders</span><a href="{{ url_for('orders') }}"><strong>Open</strong></a></li>
+          <li><span>Jobs</span><a href="{{ url_for('jobs') }}"><strong>Board</strong></a></li>
+          <li><span>Planner</span><a href="{{ url_for('planner') }}"><strong>Schedule</strong></a></li>
+          <li><span>Inventory</span><a href="{{ url_for('inventory') }}"><strong>Check stock</strong></a></li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+  window.UMS_DASHBOARD_LAYOUT = {{ saved_dashboard_layout|tojson }};
+</script>
+{% endblock %}

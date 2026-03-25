@@ -1,0 +1,22 @@
+This snapshot is a real modified project package based on your uploaded ZIP.
+
+Files actually changed in this pass:
+- app.py
+- templates/base.html
+- templates/planner.html
+- templates/jobs.html
+- static/js/app-shell.js (new)
+- static/js/planner.js (new)
+- static/css/workspace.css
+
+What is visible now:
+- Planner jobs stack into lanes when they overlap on the same workstation.
+- Planner bars and backlog cards open Jobs already filtered by workstation + order + job.
+- Planner split can be opened directly on planner bars and backlog cards.
+- Split forms now support adding more than 2 rows.
+- Base inline JS moved into app-shell.js to reduce template clutter.
+
+What was validated:
+- python -m py_compile app.py
+- node --check static/js/app-shell.js
+- node --check static/js/planner.js

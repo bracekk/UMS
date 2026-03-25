@@ -1,0 +1,437 @@
+{% extends "base.html" %} {% block title %}UMS | Planner{% endblock %} {% block
+content %}
+<div class="planner-page" data-planner-root>
+  <div class="planner-header">
+    <div class="planner-header-left">
+      <span class="eyebrow-label">Scheduling</span>
+      <h1>Planner</h1>
+      <p>
+        {{ planner_month_name }} {{ planner_year }} production timeline by
+        workstation.
+      </p>
+    </div>
+
+    <div class="planner-header-right">
+      <a
+        href="{{ url_for('planner', year=prev_year, month=prev_month) }}"
+        class="dashboard-btn secondary"
+        >Previous</a
+      >
+      <a href="{{ url_for('planner') }}" class="dashboard-btn secondary"
+        >Today</a
+      >
+      <a
+        href="{{ url_for('planner', year=next_year, month=next_month) }}"
+        class="dashboard-btn primary"
+        >Next</a
+      >
+    </div>
+  </div>
+
+  <div class="planner-toolbar-card">
+    <div class="planner-toolbar-row">
+      <div class="planner-toolbar-item">
+        <span class="planner-toolbar-label">View</span>
+        <strong>Monthly workstation schedule</strong>
+      </div>
+      <div class="planner-toolbar-item">
+        <span class="planner-toolbar-label">Drag & drop</span>
+        <strong>Move jobs directly on the timeline</strong>
+      </div>
+      <div class="planner-toolbar-item">
+        <span class="planner-toolbar-label">Backlog</span>
+        <strong>{{ unscheduled_jobs|length }} unscheduled jobs</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="planner-month-shell planner-shell-upgraded">
+    <div class="planner-scroll">
+      <div
+        class="planner-month-grid"
+        style="grid-template-columns: 220px repeat({{ month_days|length }}, minmax(44px, 1fr));"
+      >
+        <div class="planner-sticky planner-corner-cell">Workstation</div>
+
+        {% for day in month_days %}
+        <div
+          class="planner-sticky planner-day-cell {% if day.weekday in ['Sat', 'Sun'] %}weekend{% endif %} {% if day.is_today %}today{% endif %}"
+          data-date="{{ day.date }}"
+        >
+          <strong>{{ day.day }}</strong>
+          <span>{{ day.weekday }}</span>
+        </div>
+        {% endfor %} {% for workstation in workstations %}
+        <div
+          class="planner-sticky planner-workstation-cell planner-workstation-cell-upgraded"
+          data-workstation-id="{{ workstation.id }}"
+          style="--planner-lanes: {{ workstation.row_lane_count }};"
+        >
+          <div class="planner-workstation-name">{{ workstation.name }}</div>
+          <div class="planner-workstation-meta">
+            {{ workstation.hours_per_shift * workstation.shifts_per_day }} h/day
+          </div>
+          <div class="planner-workstation-lanes">
+            {{ workstation.row_lane_count }} lane{% if
+            workstation.row_lane_count != 1 %}s{% endif %}
+          </div>
+        </div>
+
+        <div
+          class="planner-row-track planner-row-track-stacked"
+          data-workstation-id="{{ workstation.id }}"
+          style="grid-column: 2 / span {{ month_days|length }}; --planner-lanes: {{ workstation.row_lane_count }};"
+        >
+          <div
+            class="planner-row-days"
+            style="grid-template-columns: repeat({{ month_days|length }}, minmax(44px, 1fr));"
+          >
+            {% for day in month_days %}
+            <div
+              class="planner-day-slot {% if day.weekday in ['Sat', 'Sun'] %}weekend{% endif %} {% if day.is_today %}today{% endif %}"
+              data-date="{{ day.date }}"
+              data-workstation-id="{{ workstation.id }}"
+            ></div>
+            {% endfor %}
+          </div>
+
+          <div
+            class="planner-bars-layer planner-bars-layer-stacked"
+            data-workstation-id="{{ workstation.id }}"
+          >
+            {% for job in jobs_by_workstation[workstation.id] %} {% set
+            status_class = '' %} {% if job.status == 'Waiting' %}{% set
+            status_class = 'waiting' %}{% endif %} {% if job.status == 'Ongoing'
+            %}{% set status_class = 'in-progress' %}{% endif %} {% if job.status
+            == 'Done' %}{% set status_class = 'completed' %}{% endif %} {% if
+            job.status == 'Paused' %}{% set status_class = 'delayed' %}{% endif
+            %}
+
+            <div
+              class="planner-job-wrap"
+              draggable="true"
+              data-job-id="{{ job.id }}"
+              data-jobs-url="{{ job.jobs_url }}"
+              data-workstation-id="{{ workstation.id }}"
+              data-start-day="{{ job.start_day }}"
+              data-end-day="{{ job.end_day }}"
+              data-span-days="{{ job.span_days }}"
+              data-planned-start="{{ job.planned_start }}"
+              data-planned-end="{{ job.planned_end }}"
+              data-lane-index="{{ job.lane_index }}"
+              style="
+                    left: calc((100% / {{ month_days|length }}) * ({{ job.start_day }} - 1) + 4px);
+                    width: calc((100% / {{ month_days|length }}) * {{ job.span_days }} - 8px);
+                    top: calc(({{ job.lane_index }} * 56px) + 8px);
+                  "
+            >
+              <div
+                class="planner-job-bar {{ status_class }} {% if job.is_split_child %}planner-job-bar-child{% endif %}"
+                data-job-id="{{ job.id }}"
+                data-workstation-id="{{ workstation.id }}"
+                data-start-date="{{ job.planned_start }}"
+                data-jobs-url="{{ job.jobs_url }}"
+                data-tooltip-order="{{ job.order_number }}"
+                data-tooltip-job="{{ job.job_name }}"
+                data-tooltip-sequence="{{ job.sequence }}"
+                data-tooltip-remaining="{{ ((job.planned_quantity or 0) - (job.completed_quantity or 0))|round(2) }}"
+                data-tooltip-product="{{ job.product_name }}"
+                title=""
+                style="background: {{ job.color }};"
+              >
+                <div class="planner-job-content">
+                  <div class="planner-job-title">
+                    {{ job.order_number }} - {{ job.job_name }}
+                  </div>
+                  <div class="planner-job-subtitle">{{ job.product_name }}</div>
+
+                  <div class="planner-job-progress">
+                    <div
+                      class="planner-job-progress-fill"
+                      style="width: {{ job.progress_percent }}%;"
+                    ></div>
+                  </div>
+                </div>
+
+                <div class="planner-job-actions">
+                  {% if not job.is_split_child and not job.parent_job_id %}
+                  <button
+                    type="button"
+                    class="planner-chip-btn"
+                    data-open-split="planner-split-{{ job.id }}"
+                  >
+                    Split
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+
+              {% if not job.is_split_child and not job.parent_job_id %}
+              <div
+                class="planner-split-popover planner-split-popover-floating"
+                id="planner-split-{{ job.id }}"
+                data-popover-job="{{ job.id }}"
+                hidden
+              >
+                <div class="planner-split-popover-header">
+                  <strong>Split {{ job.job_name }}</strong>
+                  <button
+                    type="button"
+                    class="planner-popover-close"
+                    data-close-split
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <form
+                  method="POST"
+                  action="{{ url_for('split_job', job_id=job.id) }}"
+                  class="planner-split-form"
+                  data-planner-split-form
+                >
+                  <div class="split-rows" data-split-rows>
+                    <div class="split-row">
+                      <select
+                        name="split_workstation_id"
+                        class="planner-custom-select"
+                        required
+                      >
+                        <option value="">Workstation</option>
+                        {% for ws in workstations %}
+                        <option value="{{ ws.id }}" {% if ws.id == workstation.id %}selected{% endif %}>
+                          {{ ws.name }}
+                        </option>
+                        {% endfor %}
+                      </select>
+
+                      <input
+                        type="number"
+                        name="split_quantity"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="Qty"
+                        required
+                      />
+                      <button
+                        type="button"
+                        class="planner-row-remove"
+                        data-remove-split-row
+                        aria-label="Remove row"
+                      >
+                        −
+                      </button>
+                    </div>
+
+                    <div class="split-row">
+                      <select
+                        name="split_workstation_id"
+                        class="planner-custom-select"
+                        required
+                      >
+                        <option value="">Workstation</option>
+                        {% for ws in workstations %}
+                        <option value="{{ ws.id }}">{{ ws.name }}</option>
+                        {% endfor %}
+                      </select>
+
+                      <input
+                        type="number"
+                        name="split_quantity"
+                        step="0.01"
+                        min="0.01"
+                        placeholder="Qty"
+                        required
+                      />
+                      <button
+                        type="button"
+                        class="planner-row-remove"
+                        data-remove-split-row
+                        aria-label="Remove row"
+                      >
+                        −
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="planner-split-actions">
+                    <button
+                      type="button"
+                      class="dashboard-btn secondary"
+                      data-add-split-row
+                    >
+                      Add row
+                    </button>
+                    <button
+                      type="button"
+                      class="dashboard-btn secondary"
+                      data-close-split
+                    >
+                      Close
+                    </button>
+                    <button type="submit" class="dashboard-btn primary">
+                      Create Split
+                    </button>
+                  </div>
+                </form>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="planner-backlog-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Backlog</span>
+        <h4>Unscheduled Jobs</h4>
+      </div>
+    </div>
+
+    <div class="planner-unscheduled-wrap">
+      {% if unscheduled_jobs %} {% for job in unscheduled_jobs %}
+      <div
+        class="planner-unscheduled-card"
+        draggable="true"
+        data-job-id="{{ job.id }}"
+        data-jobs-url="{{ job.jobs_url }}"
+        data-tooltip-order="{{ job.order_number }}"
+        data-tooltip-job="{{ job.job_name }}"
+        data-tooltip-sequence="{{ job.sequence }}"
+        data-tooltip-remaining="{{ ((job.planned_quantity or 0) - (job.completed_quantity or 0))|round(2) }}"
+        data-tooltip-product="{{ job.product_name }}"
+      >
+        <div class="planner-job-title">
+          {{ job.order_number }} - {{ job.job_name }}
+        </div>
+        <div class="planner-job-subtitle">{{ job.product_name }}</div>
+        <div class="planner-job-meta">{{ job.status }}</div>
+
+        {% if not job.is_split_child and not job.parent_job_id %}
+        <button
+          type="button"
+          class="planner-chip-btn planner-chip-inline"
+          data-open-split="planner-backlog-split-{{ job.id }}"
+        >
+          Split
+        </button>
+
+        <div
+          class="planner-split-popover planner-split-popover-backlog"
+          id="planner-backlog-split-{{ job.id }}"
+          hidden
+        >
+          <div class="planner-split-popover-header">
+            <strong>Split {{ job.job_name }}</strong>
+            <button
+              type="button"
+              class="planner-popover-close"
+              data-close-split
+            >
+              ×
+            </button>
+          </div>
+
+          <form
+            method="POST"
+            action="{{ url_for('split_job', job_id=job.id) }}"
+            class="planner-split-form"
+            data-planner-split-form
+          >
+            <div class="split-rows" data-split-rows>
+              <div class="split-row">
+                <select
+                  name="split_workstation_id"
+                  class="planner-custom-select"
+                  required
+                >
+                  <option value="">Workstation</option>
+                  {% for ws in workstations %}
+                  <option value="{{ ws.id }}">{{ ws.name }}</option>
+                  {% endfor %}
+                </select>
+
+                <input
+                  type="number"
+                  name="split_quantity"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="Qty"
+                  required
+                />
+                <button
+                  type="button"
+                  class="planner-row-remove"
+                  data-remove-split-row
+                  aria-label="Remove row"
+                >
+                  −
+                </button>
+              </div>
+
+              <div class="split-row">
+                <select
+                  name="split_workstation_id"
+                  class="planner-custom-select"
+                  required
+                >
+                  <option value="">Workstation</option>
+                  {% for ws in workstations %}
+                  <option value="{{ ws.id }}">{{ ws.name }}</option>
+                  {% endfor %}
+                </select>
+
+                <input
+                  type="number"
+                  name="split_quantity"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="Qty"
+                  required
+                />
+                <button
+                  type="button"
+                  class="planner-row-remove"
+                  data-remove-split-row
+                  aria-label="Remove row"
+                >
+                  −
+                </button>
+              </div>
+            </div>
+
+            <div class="planner-split-actions">
+              <button
+                type="button"
+                class="dashboard-btn secondary"
+                data-add-split-row
+              >
+                Add row
+              </button>
+              <button
+                type="button"
+                class="dashboard-btn secondary"
+                data-close-split
+              >
+                Close
+              </button>
+              <button type="submit" class="dashboard-btn primary">
+                Create Split
+              </button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %} {% else %}
+      <div class="empty-state-note">No unscheduled jobs.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

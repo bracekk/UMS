@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UMS | Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}" />
+</head>
+<body class="auth-body">
+  <div class="auth-page">
+    <div class="auth-shell auth-shell-compact auth-shell-login">
+      <a href="{{ url_for('home') }}" class="auth-logo">
+        <span class="auth-logo-u">U</span><span class="auth-logo-m">M</span><span class="auth-logo-s">S</span>
+      </a>
+
+      <div class="auth-header">
+        <span class="auth-badge">Login</span>
+        <h1>Welcome back</h1>
+        <p>Continue to your manufacturing workspace.</p>
+      </div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="auth-flash-stack">
+            {% for category, message in messages %}
+              <div class="auth-flash auth-flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% if error %}
+        <div class="auth-flash auth-flash-error">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" class="auth-form">
+        <div class="auth-field">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="name@company.com"
+            autocomplete="email"
+            required
+          >
+        </div>
+
+        <div class="auth-field">
+          <div class="auth-label-row">
+            <label for="password">Password</label>
+            <a href="{{ url_for('forgot_password') }}" class="auth-inline-link">Forgot password?</a>
+          </div>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+
+        <button type="submit" class="auth-btn auth-btn-primary">Login</button>
+      </form>
+
+      <div class="auth-divider">
+        <span>New to UMS?</span>
+      </div>
+
+      <p class="auth-footer-text">
+        Don’t have an account?
+        <a href="{{ url_for('register') }}">Create account</a>
+      </p>
+
+      <a href="{{ url_for('home') }}" class="auth-back-link">Back to landing page</a>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</body>
+</html>

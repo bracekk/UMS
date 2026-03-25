@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}UMS | Order Shortages{% endblock %}
+
+{% block content %}
+<div class="jobs-header">
+  <div class="jobs-header-left">
+    <span class="eyebrow-label">Procurement</span>
+    <h1>Shortages — {{ order_number }}</h1>
+    <p>Order-driven shortages showing only what is still missing from inventory.</p>
+  </div>
+
+  <div class="jobs-header-right">
+    <a href="{{ url_for('orders') }}" class="dashboard-btn secondary">Back to Orders</a>
+  </div>
+</div>
+
+<div class="dashboard-table-card shortage-table-card">
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Demand Gap</span>
+      <h4>Missing Materials</h4>
+    </div>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="orders-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Unit</th>
+          <th>Required</th>
+          <th>Missing</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if shortages %}
+          {% for s in shortages %}
+            {% if s.missing_qty > 0 %}
+              <tr class="shortage-row">
+                <td>
+                  <div class="product-cell">
+                    <strong>{{ s.item_name }}</strong>
+                    <span class="product-sub">{{ s.item_code }}</span>
+                  </div>
+                </td>
+                <td>{{ s.unit }}</td>
+                <td>{{ s.required_qty }}</td>
+                <td><span class="shortage-qty">{{ s.missing_qty }}</span></td>
+                <td>
+                  <span class="status-badge delayed">Missing</span>
+                </td>
+                <td class="actions-cell">
+                  {% if not s.covered %}
+                    {% if has_permission_ui('manage_orders') or has_permission_ui('manage_procurement') %}
+                      <button
+                        type="button"
+                        class="table-action-btn btn-edit"
+                        onclick="createPR({{ s.id }}, this)"
+                      >
+                        Create PR
+                      </button>
+                    {% else %}
+                      <span class="subtle-meta">No permission</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="subtle-meta">Covered</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endif %}
+          {% endfor %}
+
+          {% set open_shortages = shortages | selectattr('missing_qty', 'gt', 0) | list %}
+          {% if not open_shortages %}
+            <tr>
+              <td colspan="6" class="empty-table-message">No missing materials for this order.</td>
+            </tr>
+          {% endif %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="empty-table-message">No shortages for this order.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+async function createPR(shortageId, button) {
+  if (button) {
+    button.disabled = true;
+    button.dataset.originalText = button.textContent;
+    button.textContent = "Creating...";
+  }
+
+  try {
+    const response = await fetch(`/shortages/${shortageId}/create-pr`, {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest"
+      }
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    let payload = null;
+
+    if (contentType.includes("application/json")) {
+      payload = await response.json();
+    } else {
+      const rawText = await response.text();
+      console.error("Non-JSON response from shortage PR route:", rawText);
+      throw new Error("Server returned an unexpected response. Please refresh and try again.");
+    }
+
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || "Failed to create purchase request.");
+    }
+
+    window.location.reload();
+  } catch (error) {
+    console.error(error);
+    alert(error.message || "Failed to create purchase request.");
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = button.dataset.originalText || "Create PR";
+    }
+  }
+}
+</script>
+{% endblock %}

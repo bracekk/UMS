@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UMS | Manufacturing control without the chaos</title>
+    <meta
+        name="description"
+        content="UMS helps small manufacturers control orders, jobs, planning, stock and execution in one dark premium workspace."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet"
+    />
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/landing.css') }}"
+    />
+</head>
+<body class="landing-page">
+    <div class="landing-shell">
+        <header class="landing-header" id="landingHeader">
+            <div class="landing-container landing-header-inner">
+                <a href="{{ url_for('home') }}" class="landing-brand">
+                    U<span class="landing-brand-accent">M</span>S
+                </a>
+
+                <nav class="landing-nav">
+                    <a href="#product">Product</a>
+                    <a href="#workflow">Workflow</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="#contact">Contact us</a>
+                </nav>
+
+                <div class="landing-header-actions">
+                    <a
+                        href="{{ url_for('login') }}"
+                        class="landing-btn landing-btn-secondary"
+                    >
+                        Login
+                    </a>
+                    <a
+                        href="{{ url_for('register') }}"
+                        class="landing-btn landing-btn-primary"
+                    >
+                        Create Account
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="hero-section">
+                <div class="landing-ambient-a"></div>
+                <div class="landing-ambient-b"></div>
+
+                <div class="landing-container">
+                    <div class="hero-grid">
+                        <div class="hero-copy">
+                          <div class="hero-badge-row">
+                              <span class="landing-pill">Manufacturing workspace for small teams</span>
+                              <span class="landing-pill">Orders · Jobs · Planner · Stock</span>
+                          </div>
+
+                          <h1>
+                              One production
+                              control
+                              workspace that
+                              actually helps.
+                          </h1>
+
+                          <p class="hero-text">
+                              UMS gives smaller manufacturers one place to track orders, production
+                              jobs, workstation load, shortages and stock without juggling
+                              spreadsheets, paper notes and disconnected tools.
+                          </p>
+
+                          <div class="hero-actions">
+                              <a
+                                  href="{{ url_for('register') }}"
+                                  class="landing-btn landing-btn-primary"
+                              >
+                                  Start Free
+                              </a>
+                              <a
+                                  href="#pricing"
+                                  class="landing-btn landing-btn-secondary"
+                              >
+                                  See Pricing
+                              </a>
+                          </div>
+
+                          <div class="hero-metrics hero-metrics-inline">
+                              <div class="hero-metric">
+                                  <strong>Orders</strong>
+                                  <span>
+                                      Track demand and execution status without losing visibility.
+                                  </span>
+                              </div>
+                              <div class="hero-metric">
+                                  <strong>Planning</strong>
+                                  <span>
+                                      Keep jobs, capacity and workstation flow in one operational view.
+                                  </span>
+                              </div>
+                              <div class="hero-metric">
+                                  <strong>Stock</strong>
+                                  <span>
+                                      Connect products, BOM logic and shortages to actual execution.
+                                  </span>
+                              </div>
+                          </div>
+                      </div>
+                        <div class="hero-visual-shell">
+                            <div class="hero-visual-panel tilt-card" id="heroVisualPanel">
+                                <div class="hero-window-bar">
+                                    <span class="hero-window-dot red"></span>
+                                    <span class="hero-window-dot yellow"></span>
+                                    <span class="hero-window-dot green"></span>
+                                </div>
+
+                                <div class="hero-panel-body">
+                                    <div class="preview-app-shell">
+                                        <aside class="preview-sidebar">
+                                            <div class="preview-sidebar-brand">UMS</div>
+
+                                            <div class="preview-sidebar-nav">
+                                                <div class="preview-nav-item is-active">Dashboard</div>
+                                                <div class="preview-nav-item">Orders</div>
+                                                <div class="preview-nav-item">Jobs</div>
+                                                <div class="preview-nav-item">Planner</div>
+                                                <div class="preview-nav-item">Workstations</div>
+                                            </div>
+                                        </aside>
+
+                                        <div class="preview-main">
+                                            <div class="preview-toolbar">
+                                                <span class="preview-chip">Workspace preview</span>
+                                                <span class="preview-chip is-accent">Live operations view</span>
+                                            </div>
+
+                                            <div class="preview-grid">
+                                                <div class="preview-card"></div>
+                                                <div class="preview-card"></div>
+                                                <div class="preview-card"></div>
+                                                <div class="preview-card"></div>
+
+                                                <div class="preview-card tall"></div>
+                                                <div class="preview-card medium"></div>
+                                                <div class="preview-card medium"></div>
+                                                <div class="preview-card medium"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="hero-floating-chip" style="top: 18px; right: 28px;">
+                                    Live production board
+                                </div>
+                                <div class="hero-floating-chip" style="bottom: 26px; left: 26px;">
+                                    Orders → Jobs → Stock
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="landing-section capabilities-orbit-section" id="product">
+                <div class="landing-container">
+                    <div class="section-header landing-reveal">
+                        <div class="section-eyebrow">Product direction</div>
+                        <h2>Built around actual operational control.</h2>
+                        <p>
+                            UMS is not a generic admin shell. It is structured around the core
+                            reality of smaller manufacturing teams: orders, jobs, planning,
+                            stock visibility and fast reaction to execution issues.
+                        </p>
+                    </div>
+
+                    <div class="feature-grid">
+                        <article class="feature-card tilt-card landing-reveal reveal-left" style="--reveal-delay: 0.04s;">
+                            <div class="feature-icon">
+                                <img src="{{ url_for('static', filename='images/icons/orders.png') }}" alt="Orders icon">
+                            </div>
+                            <h3>Orders tied to execution</h3>
+                            <p>
+                                Move from demand to jobs with clearer visibility over what is
+                                active, blocked or already flowing through production.
+                            </p>
+                        </article>
+
+                        <article class="feature-card tilt-card landing-reveal reveal-scale" style="--reveal-delay: 0.1s;">
+                            <div class="feature-icon">
+                                <img src="{{ url_for('static', filename='images/icons/planner.png') }}" alt="Planner icon">
+                            </div>
+                            <h3>Planner in the same workflow</h3>
+                            <p>
+                                Keep workstation load, queue awareness and scheduling decisions
+                                close to the rest of the production picture.
+                            </p>
+                        </article>
+
+                        <article class="feature-card tilt-card landing-reveal reveal-right" style="--reveal-delay: 0.16s;">
+                            <div class="feature-icon">
+                                <img src="{{ url_for('static', filename='images/icons/inventory.png') }}" alt="Inventory icon">
+                            </div>
+                            <h3>Inventory with BOM logic</h3>
+                            <p>
+                                Link stock, products, shortages and execution signals in one
+                                system instead of splitting them across separate tools.
+                            </p>
+                        </article>
+                    </div>
+            </section>
+
+            <section class="workspace-preview-section landing-section">
+                <div class="landing-container">
+                    <div class="workspace-preview-grid">
+                        <div class="workspace-preview-copy landing-reveal reveal-left">
+                            <div class="section-eyebrow">Workspace preview</div>
+                            <h2>A product story that matches the actual app direction.</h2>
+                            <p>
+                                The public landing and the internal workspace now follow the
+                                same visual language: dark premium UI, strong hierarchy and a
+                                dashboard-first operational structure.
+                            </p>
+
+                            <ul class="workspace-preview-bullets">
+                                <li>Daily visibility across orders and jobs</li>
+                                <li>Planner and workstation capacity in the same workflow</li>
+                                <li>Inventory, BOM and shortage signals tied to execution</li>
+                            </ul>
+                        </div>
+
+                        <div class="workspace-preview-visual landing-reveal reveal-right" style="--reveal-delay: 0.08s;">
+                            <div class="preview-window tilt-card">
+                                <div class="preview-window-bar">
+                                    <span class="hero-window-dot red"></span>
+                                    <span class="hero-window-dot yellow"></span>
+                                    <span class="hero-window-dot green"></span>
+                                </div>
+
+                                <div class="preview-window-body">
+                                    <div class="preview-app-shell">
+                                        <aside class="preview-sidebar">
+                                            <div class="preview-sidebar-brand">UMS</div>
+
+                                            <div class="preview-sidebar-nav">
+                                                <div class="preview-nav-item is-active">Dashboard</div>
+                                                <div class="preview-nav-item">Orders</div>
+                                                <div class="preview-nav-item">Jobs</div>
+                                                <div class="preview-nav-item">Planner</div>
+                                                <div class="preview-nav-item">Workstations</div>
+                                            </div>
+                                        </aside>
+
+                                        <div class="preview-main">
+                                            <div class="preview-toolbar">
+                                                <span class="preview-chip">Live layout</span>
+                                                <span class="preview-chip is-accent">Customizable</span>
+                                            </div>
+
+                                            <div class="preview-grid">
+                                                <div class="preview-card"></div>
+                                                <div class="preview-card"></div>
+                                                <div class="preview-card"></div>
+                                                <div class="preview-card"></div>
+
+                                                <div class="preview-card tall"></div>
+                                                <div class="preview-card medium"></div>
+                                                <div class="preview-card medium"></div>
+                                                <div class="preview-card medium"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="workspace-preview-caption">
+                                Aligned with the actual workspace direction
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="landing-section why-orbit-section" id="workflow">
+                <div class="landing-container">
+                    <div class="section-header landing-reveal">
+                        <div class="section-eyebrow">Workflow</div>
+                        <h2>Made for real production rhythm, not generic office work.</h2>
+                        <p>
+                            The product flow is designed to reduce friction between incoming work,
+                            production visibility, stock awareness and action when something needs
+                            intervention.
+                        </p>
+                    </div>
+
+                    <div class="workflow-grid">
+                        <article class="workflow-card landing-reveal reveal-left" style="--reveal-delay: 0.04s;">
+                            <div class="step-number">
+                                <img src="{{ url_for('static', filename='images/icons/orders.png') }}" alt="Orders">
+                            </div>
+                            <h3>Capture demand</h3>
+                            <p>
+                                Start from orders and turn incoming work into something the team
+                                can actually manage and execute.
+                            </p>
+                        </article>
+
+                        <article class="workflow-card landing-reveal reveal-scale" style="--reveal-delay: 0.1s;">
+                            <div class="step-number">
+                                <img src="{{ url_for('static', filename='images/icons/jobs.png') }}" alt="Jobs">
+                            </div>
+                            <h3>Break into jobs</h3>
+                            <p>
+                                Keep production tasks structured so execution is not floating
+                                between notes, memory and ad hoc coordination.
+                            </p>
+                        </article>
+
+                        <article class="workflow-card landing-reveal reveal-scale" style="--reveal-delay: 0.16s;">
+                            <div class="step-number">
+                                <img src="{{ url_for('static', filename='images/icons/capacity.png') }}" alt="Capacity">
+                            </div>
+                            <h3>Plan capacity</h3>
+                            <p>
+                                Use planner and workstation visibility to understand where work
+                                is moving, waiting or building pressure.
+                            </p>
+                        </article>
+
+                        <article class="workflow-card landing-reveal reveal-right" style="--reveal-delay: 0.22s;">
+                            <div class="step-number">
+                                <img src="{{ url_for('static', filename='images/icons/production.png') }}" alt="Production">
+                            </div>
+                            <h3>React faster</h3>
+                            <p>
+                                See shortages, stock issues and execution blockers in the same
+                                operational space before they become chaos.
+                            </p>
+                        </article>
+                    </div>
+            </section>
+
+            <section class="pricing-section landing-section" id="pricing">
+                <div class="landing-container">
+                    <div class="section-header landing-reveal">
+                        <div class="section-eyebrow">Pricing</div>
+                        <h2>Simple pricing for growing production teams.</h2>
+                        <p>
+                            Start with the setup that fits your current operation and expand as
+                            your workflow becomes more structured.
+                        </p>
+                    </div>
+
+                    <div class="pricing-grid">
+                        <article class="pricing-card landing-reveal reveal-left" style="--reveal-delay: 0.04s;">
+                            <div class="pricing-top">
+                                <div class="pricing-label">STARTER</div>
+                            </div>
+
+                            <h3>For smaller workshops</h3>
+
+                            <div class="pricing-price-row">
+                                <span class="pricing-currency">€</span>
+                                <span class="pricing-price">49</span>
+                                <span class="pricing-period">/month</span>
+                            </div>
+
+                            <p class="pricing-description">
+                                For teams that need clearer structure around orders, stock and
+                                products.
+                            </p>
+
+                            <ul class="pricing-features">
+                                <li>Orders and job tracking</li>
+                                <li>Products and BOM structure</li>
+                                <li>Basic inventory visibility</li>
+                                <li>Workstation overview</li>
+                            </ul>
+
+                            <div class="spacer"></div>
+
+                            <a
+                                href="{{ url_for('register') }}"
+                                class="landing-btn landing-btn-secondary"
+                            >
+                                Get Started
+                            </a>
+                        </article>
+
+                        <article class="pricing-card is-featured landing-reveal reveal-scale" style="--reveal-delay: 0.1s;">
+                            <div class="pricing-top">
+                                <div class="pricing-label">GROWTH</div>
+                                <div class="pricing-badge">Best fit</div>
+                            </div>
+
+                            <h3>For teams that need daily control</h3>
+
+                            <div class="pricing-price-row">
+                                <span class="pricing-currency">€</span>
+                                <span class="pricing-price">99</span>
+                                <span class="pricing-period">/month</span>
+                            </div>
+
+                            <p class="pricing-description">
+                                Best for manufacturers that want planning, capacity visibility
+                                and stronger execution control.
+                            </p>
+
+                            <ul class="pricing-features">
+                                <li>Everything in Starter</li>
+                                <li>Planner and job scheduling</li>
+                                <li>Workstation load tracking</li>
+                                <li>Shortage visibility</li>
+                                <li>Priority support</li>
+                            </ul>
+
+                            <div class="spacer"></div>
+
+                            <a
+                                href="{{ url_for('register') }}"
+                                class="landing-btn landing-btn-primary"
+                            >
+                                Start Growth
+                            </a>
+                        </article>
+
+                        <article class="pricing-card landing-reveal reveal-right" style="--reveal-delay: 0.16s;">
+                            <div class="pricing-top">
+                                <div class="pricing-label">CUSTOM</div>
+                            </div>
+
+                            <h3>For specific workflows</h3>
+
+                            <p class="pricing-description">
+                                For factories that need a tailored setup, phased onboarding or
+                                workflow-specific support.
+                            </p>
+
+                            <ul class="pricing-features">
+                                <li>Custom onboarding</li>
+                                <li>Workflow-specific setup</li>
+                                <li>Priority communication</li>
+                                <li>Flexible rollout</li>
+                            </ul>
+
+                            <div class="spacer"></div>
+
+                            <a
+                                href="{{ url_for('login') }}"
+                                class="landing-btn landing-btn-secondary"
+                            >
+                                Contact Sales
+                            </a>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <section class="contact-section landing-section" id="contact">
+    <div class="landing-container">
+        <div class="section-header landing-reveal">
+            <div class="section-eyebrow">Contact us</div>
+            <h2>Talk to us about your workflow.</h2>
+            <p>
+                If you want a tailored setup, onboarding help or have questions
+                about whether UMS fits your production flow, send a message here.
+            </p>
+        </div>
+
+        <div class="contact-grid">
+            <div class="contact-card landing-reveal reveal-left">
+                <h3>Let’s see if UMS fits your team.</h3>
+                <p>
+                    Share your current setup, team size or biggest production pain
+                    points and we’ll have a much better starting point.
+                </p>
+
+                <ul class="contact-list">
+                    <li>Explain your current workflow or blockers</li>
+                    <li>Ask about onboarding or tailored rollout</li>
+                    <li>Share the email where we should reply</li>
+                </ul>
+            </div>
+
+            <div class="contact-card landing-reveal reveal-right" style="--reveal-delay: 0.08s;">
+                <form class="contact-form" method="post" action="#">
+                    <div class="contact-form-row">
+                        <div class="contact-field">
+                            <label for="contact-name">Name</label>
+                            <input
+                                id="contact-name"
+                                name="name"
+                                type="text"
+                                class="contact-input"
+                                placeholder="Your name"
+                            />
+                        </div>
+
+                        <div class="contact-field">
+                            <label for="contact-email">Email</label>
+                            <input
+                                id="contact-email"
+                                name="email"
+                                type="email"
+                                class="contact-input"
+                                placeholder="you@company.com"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="contact-field">
+                        <label for="contact-company">Company</label>
+                        <input
+                            id="contact-company"
+                            name="company"
+                            type="text"
+                            class="contact-input"
+                            placeholder="Company name"
+                        />
+                    </div>
+
+                    <div class="contact-field">
+                        <label for="contact-message">Message</label>
+                        <textarea
+                            id="contact-message"
+                            name="message"
+                            class="contact-textarea"
+                            placeholder="Tell us about your workflow, team size or what you need help with"
+                        ></textarea>
+                    </div>
+
+                    <button type="submit" class="landing-btn landing-btn-primary">
+                        Send Message
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+            <section class="landing-section final-cta">
+                <div class="landing-container">
+                    <div class="final-cta-panel landing-reveal reveal-scale">
+                        <h2>Bring structure to production without bloating the workflow.</h2>
+                        <p>
+                            UMS is built for teams that want one operational workspace for
+                            orders, jobs, planning and stock visibility — with a product feel
+                            that already matches a serious launch direction.
+                        </p>
+
+                        <div class="final-cta-actions">
+                            <a
+                                href="{{ url_for('register') }}"
+                                class="landing-btn landing-btn-primary"
+                            >
+                                Create Account
+                            </a>
+                            <a
+                                href="{{ url_for('login') }}"
+                                class="landing-btn landing-btn-secondary"
+                            >
+                                Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="landing-footer">
+            <div class="landing-container landing-footer-inner">
+                <div class="landing-footer-copy">
+                    © 2026 UMS · Unity Manufacturing Solutions
+                </div>
+
+                <div class="landing-footer-links">
+                    <a href="#product">Product</a>
+                    <a href="#workflow">Workflow</a>
+                    <a href="#pricing">Pricing</a>
+                    <a href="#contact">Contact us</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.7/dist/gsap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/landing-page.js') }}"></script>
+</body>
+</html>

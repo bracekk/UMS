@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% block title %}UMS | View Batch{% endblock %}
+
+{% block content %}
+<section class="ubatch-shell">
+  <div class="jobs-header ubatch-header">
+    <div class="jobs-header-left">
+      <span class="eyebrow-label">Order batch</span>
+      <h1>{{ batch.batch_number }} — {{ batch.name }}</h1>
+      <p>Plan costs, materials and workstation load before creating any real jobs.</p>
+    </div>
+
+    <div class="jobs-header-right ubatch-header-actions">
+      <a href="{{ url_for('order_batches') }}" class="dashboard-btn secondary">Back to Batches</a>
+
+      {% if batch.status == 'draft' %}
+        <form method="POST" action="{{ url_for('buy_order_batch_materials', batch_id=batch.id) }}" class="inline-form">
+          <button type="submit" class="dashboard-btn secondary">Buy Missing Materials</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('launch_order_batch', batch_id=batch.id) }}" class="inline-form" onsubmit="return confirm('Launch this batch and create real orders/jobs?');">
+          <button type="submit" class="dashboard-btn primary">Launch Batch</button>
+        </form>
+
+        <form method="POST" action="{{ url_for('delete_order_batch', batch_id=batch.id) }}" class="inline-form" onsubmit="return confirm('Delete this draft batch?');">
+          <button type="submit" class="dashboard-btn danger">Delete Batch</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="dashboard-stats section-spacing cost-stat-grid ubatch-stat-grid">
+    <div class="stat-card stat-card-accent">
+      <span class="stat-label">Status</span>
+      <strong>{{ batch.status|title }}</strong>
+      <span class="stat-meta">{{ batch.order_count }} planned orders</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">Materials Cost</span>
+      <strong>€ {{ '%.2f'|format(batch_cost.materials_cost) }}</strong>
+      <span class="stat-meta">Aggregated BOM cost</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">Jobs Cost</span>
+      <strong>€ {{ '%.2f'|format(batch_cost.jobs_cost) }}</strong>
+      <span class="stat-meta">Workstation time value</span>
+    </div>
+
+    <div class="stat-card">
+      <span class="stat-label">Total Cost</span>
+      <strong>€ {{ '%.2f'|format(batch_cost.total_cost) }}</strong>
+      <span class="stat-meta">Materials + jobs</span>
+    </div>
+  </div>
+
+  <div class="ubatch-top-grid section-spacing">
+    <section class="ubatch-builder">
+      <div class="ubatch-card ubatch-card--builder">
+        <div class="ubatch-card__header">
+          <span class="ubatch-chip">Planning</span>
+          <h3>Add Order to Batch</h3>
+        </div>
+
+        {% if batch.status == 'draft' %}
+          <form method="POST" action="{{ url_for('add_order_to_batch', batch_id=batch.id) }}" class="ubatch-form" id="batchAddOrderForm">
+            <div class="ubatch-form__grid">
+              <div class="ubatch-field ubatch-field--floating ubatch-field--order-number">
+                <input type="text" id="order_number" name="order_number" value="{{ batch.batch_number }}-01" placeholder=" " required>
+                <label for="order_number">Order Number</label>
+              </div>
+
+              <div class="ubatch-field ubatch-field--group">
+                <label class="ubatch-field__label">Product Group</label>
+                <div class="custom-select ubatch-select" data-name="batch_group_filter" id="batchProductGroupFilterSelect">
+                  <div class="custom-select-trigger ubatch-select__trigger" tabindex="0" role="button">
+                    <span>All groups</span>
+                  </div>
+
+                  <div class="custom-options ubatch-select__options">
+                    <div class="custom-option ubatch-select__option selected" data-value="">All groups</div>
+                    {% for group in product_groups %}
+                      <div class="custom-option ubatch-select__option" data-value="{{ group.id }}">{{ group.name }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <input type="hidden" id="batchProductGroupFilter" value="">
+                </div>
+              </div>
+
+              <div class="ubatch-field ubatch-field--product">
+                <label class="ubatch-field__label">Product</label>
+                {% if products %}
+                  <div class="custom-select ubatch-select" data-name="product_id" id="batchProductSelect">
+                    <div class="custom-select-trigger ubatch-select__trigger" tabindex="0" role="button">
+                      <span>Select product</span>
+                    </div>
+
+                    <div class="custom-options ubatch-select__options">
+                      {% for product in products %}
+                        <div
+                          class="custom-option ubatch-select__option"
+                          data-value="{{ product.id }}"
+                          data-group-id="{{ product.group_id or '' }}"
+                        >
+                          {{ product.product_code }} — {{ product.product_name }}
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                    <input type="hidden" name="product_id" value="">
+                  </div>
+                {% else %}
+                  <div class="ubatch-select ubatch-select--disabled">
+                    <div class="ubatch-select__trigger">
+                      <span>No products available</span>
+                    </div>
+                    <input type="hidden" name="product_id" value="" disabled>
+                  </div>
+                {% endif %}
+              </div>
+
+              <div class="ubatch-field ubatch-field--floating ubatch-field--quantity">
+                <input type="number" step="0.01" min="0.01" id="quantity" name="quantity" value="1" placeholder=" " required>
+                <label for="quantity">Quantity</label>
+              </div>
+
+              <div class="ubatch-field ubatch-field--floating ubatch-field--due-date">
+                <input type="date" id="due_date" name="due_date" placeholder=" ">
+                <label for="due_date">Due Date</label>
+              </div>
+
+              <div class="ubatch-field ubatch-field--priority">
+                <label class="ubatch-field__label">Priority</label>
+                <div class="custom-select ubatch-select" data-name="priority">
+                  <div class="custom-select-trigger ubatch-select__trigger" tabindex="0" role="button">
+                    <span>Medium</span>
+                  </div>
+
+                  <div class="custom-options ubatch-select__options">
+                    <div class="custom-option ubatch-select__option" data-value="Low">Low</div>
+                    <div class="custom-option ubatch-select__option selected" data-value="Medium">Medium</div>
+                    <div class="custom-option ubatch-select__option" data-value="High">High</div>
+                  </div>
+
+                  <input type="hidden" name="priority" value="Medium">
+                </div>
+              </div>
+
+              <div class="ubatch-field ubatch-field--notes ubatch-field--floating">
+                <textarea id="notes" name="notes" rows="4" placeholder=" "></textarea>
+                <label for="notes">Notes</label>
+              </div>
+            </div>
+
+            <div class="ubatch-form__actions">
+              <button type="submit" class="dashboard-btn primary" {% if not products %}disabled{% endif %}>Add to Batch</button>
+            </div>
+          </form>
+        {% else %}
+          <div class="empty-state-note">This batch is already launched and can no longer be changed.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <aside class="ubatch-summary">
+      <div class="ubatch-card ubatch-card--summary">
+        <div class="ubatch-card__header">
+          <span class="ubatch-chip">Summary</span>
+          <h3>Batch Overview</h3>
+        </div>
+
+        <div class="ubatch-summary__rows">
+          <div class="ubatch-summary__row">
+            <span>Orders</span>
+            <strong>{{ batch.order_count }}</strong>
+          </div>
+
+          <div class="ubatch-summary__row">
+            <span>Total Quantity</span>
+            <strong>{{ batch.total_quantity }}</strong>
+          </div>
+
+          <div class="ubatch-summary__row">
+            <span>Materials Cost</span>
+            <strong>€ {{ '%.2f'|format(batch_cost.materials_cost) }}</strong>
+          </div>
+
+          <div class="ubatch-summary__row">
+            <span>Jobs Cost</span>
+            <strong>€ {{ '%.2f'|format(batch_cost.jobs_cost) }}</strong>
+          </div>
+
+          <div class="ubatch-summary__row">
+            <span>Total Cost</span>
+            <strong>€ {{ '%.2f'|format(batch_cost.total_cost) }}</strong>
+          </div>
+
+          <div class="ubatch-summary__row">
+            <span>Created</span>
+            <strong>{{ batch.created_at }}</strong>
+          </div>
+
+          {% if batch.launched_at %}
+            <div class="ubatch-summary__row">
+              <span>Launched</span>
+              <strong>{{ batch.launched_at }}</strong>
+            </div>
+          {% endif %}
+        </div>
+
+        {% if batch.notes %}
+          <div class="ubatch-summary__notes">
+            <span class="ubatch-chip ubatch-chip--muted">Notes</span>
+            <p>{{ batch.notes }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+
+  <section class="dashboard-table-card section-spacing ubatch-section-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Capacity preview</span>
+        <h4>Planned Workstation Load</h4>
+      </div>
+    </div>
+
+    <form method="GET" class="batch-preview-filter-form">
+      {% for workstation in involved_workstations %}
+        <label class="jobs-pill-option">
+          <input
+            type="checkbox"
+            name="preview_workstation"
+            value="{{ workstation.id }}"
+            {% if not selected_workstation_ids or workstation.id|string in selected_workstation_ids %}checked{% endif %}
+          >
+          <span>{{ workstation.name }}</span>
+        </label>
+      {% endfor %}
+
+      <button type="submit" class="dashboard-btn secondary">Update Preview</button>
+    </form>
+
+    <div class="batch-load-grid">
+      {% if planned_workstations %}
+        {% for ws in planned_workstations %}
+          {% set safe_percent = ws.preview_percent if ws.preview_percent < 100 else 100 %}
+          <article class="batch-load-card">
+            <div class="batch-load-ring" style="--ring-percent: {{ safe_percent }}%; --ring-color: {{ ws.color }};">
+              <span>{{ ws.preview_percent|round(1) }}%</span>
+            </div>
+
+            <div class="batch-load-copy">
+              <h4>{{ ws.name }}</h4>
+              <p>Current {{ ws.current_used|round(2) }} h · Batch {{ ws.planned_batch_hours|round(2) }} h</p>
+
+              <div class="batch-load-metrics">
+                <span>Preview total <strong>{{ ws.preview_total|round(2) }} h</strong></span>
+                <span>Capacity <strong>{{ ws.monthly_capacity|round(2) }} h</strong></span>
+                <span>Cost / hour <strong>€ {{ '%.2f'|format(ws.cost_per_hour) }}</strong></span>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      {% else %}
+        <div class="empty-table-message">No workstation preview available yet.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="dashboard-table-card section-spacing ubatch-section-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Batch orders</span>
+        <h4>Orders Inside Batch</h4>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="orders-table batch-order-cost-table">
+        <thead>
+          <tr>
+            <th>Order</th>
+            <th>Product</th>
+            <th>Group</th>
+            <th>Qty</th>
+            <th>Due Date</th>
+            <th>Priority</th>
+            <th>Materials</th>
+            <th>Jobs</th>
+            <th>Total</th>
+            <th>Launched Order</th>
+            {% if batch.status == 'draft' %}
+              <th>Actions</th>
+            {% endif %}
+          </tr>
+        </thead>
+
+        <tbody>
+          {% if batch_orders %}
+            {% for order in batch_orders %}
+              <tr>
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>{{ order.product_code }} — {{ order.product_name }}</td>
+                <td><span class="group-badge">{{ order.group_name or 'Ungrouped' }}</span></td>
+                <td>{{ order.quantity }}</td>
+                <td>{{ order.due_date or '-' }}</td>
+                <td><span class="priority-pill priority-{{ order.priority|lower }}">{{ order.priority }}</span></td>
+                <td>€ {{ '%.2f'|format(order.materials_cost) }}</td>
+                <td>€ {{ '%.2f'|format(order.jobs_cost) }}</td>
+                <td><strong>€ {{ '%.2f'|format(order.total_cost) }}</strong></td>
+                <td>
+                  {% if order.launched_order_id %}
+                    #{{ order.launched_order_id }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+
+                {% if batch.status == 'draft' %}
+                  <td class="actions-cell">
+                    <div class="table-actions-inline">
+                      <a href="{{ url_for('edit_batch_order', batch_id=batch.id, batch_order_id=order.id) }}" class="table-action-btn btn-primary">Edit</a>
+
+                      <form method="POST" action="{{ url_for('delete_batch_order', batch_id=batch.id, batch_order_id=order.id) }}" class="inline-form" onsubmit="return confirm('Remove this planned order from the batch?');">
+                        <button type="submit" class="table-action-btn btn-danger">Remove</button>
+                      </form>
+                    </div>
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="{% if batch.status == 'draft' %}11{% else %}10{% endif %}" class="empty-table-message">
+                No planned orders in this batch yet.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="dashboard-table-card section-spacing ubatch-section-card">
+    <div class="card-header">
+      <div>
+        <span class="card-kicker">Aggregated materials</span>
+        <h4>Total Material Demand</h4>
+      </div>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Required</th>
+            <th>Stock</th>
+            <th>Reserved</th>
+            <th>Available</th>
+            <th>Missing</th>
+            <th>Supplier</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% if materials %}
+            {% for material in materials %}
+              <tr>
+                <td><strong>{{ material.item_code }}</strong> — {{ material.item_name }}</td>
+                <td>{{ material.required_qty }} {{ material.measurement_unit }}</td>
+                <td>{{ material.stock_qty }} {{ material.measurement_unit }}</td>
+                <td>{{ material.reserved_qty }} {{ material.measurement_unit }}</td>
+                <td>{{ material.available_qty }} {{ material.measurement_unit }}</td>
+                <td>
+                  {% if material.shortage_qty > 0 %}
+                    <span class="status-badge delayed">{{ material.shortage_qty }} {{ material.measurement_unit }}</span>
+                  {% else %}
+                    <span class="status-badge completed">0</span>
+                  {% endif %}
+                </td>
+                <td>{{ material.supplier_name or '-' }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="empty-table-message">No material demand available yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+
+<script>
+(function () {
+  const groupFilterInput = document.getElementById('batchProductGroupFilter');
+  const productSelect = document.getElementById('batchProductSelect');
+
+  if (!groupFilterInput || !productSelect) return;
+
+  const triggerText = productSelect.querySelector('.custom-select-trigger span');
+  const hiddenInput = productSelect.querySelector('input[type="hidden"]');
+  const options = Array.from(productSelect.querySelectorAll('.custom-option'));
+
+  function refreshOptions() {
+    const selectedGroup = groupFilterInput.value;
+    let firstVisible = null;
+    let currentStillVisible = false;
+
+    options.forEach((option) => {
+      const visible = !selectedGroup || (option.dataset.groupId || '') === selectedGroup;
+      option.style.display = visible ? '' : 'none';
+
+      if (visible && !firstVisible) {
+        firstVisible = option;
+      }
+
+      if (visible && hiddenInput.value && option.dataset.value === hiddenInput.value) {
+        currentStillVisible = true;
+      }
+    });
+
+    if (currentStillVisible) {
+      const selected = options.find((option) => option.dataset.value === hiddenInput.value);
+      if (selected) {
+        triggerText.textContent = selected.textContent.trim();
+        options.forEach((option) => {
+          option.classList.toggle('selected', option === selected);
+        });
+        return;
+      }
+    }
+
+    if (firstVisible) {
+      options.forEach((option) => {
+        option.classList.toggle('selected', option === firstVisible);
+      });
+      hiddenInput.value = firstVisible.dataset.value;
+      triggerText.textContent = firstVisible.textContent.trim();
+    } else {
+      options.forEach((option) => option.classList.remove('selected'));
+      hiddenInput.value = '';
+      triggerText.textContent = 'No products in this group';
+    }
+  }
+
+  groupFilterInput.addEventListener('change', refreshOptions);
+  refreshOptions();
+})();
+</script>
+{% endblock %}
