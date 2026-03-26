@@ -8592,21 +8592,13 @@ def purchase_requests():
     priority_filter = request.args.get("priority", "").strip().lower()
     supplier_filter = request.args.get("supplier_id", "").strip()
 
-    history_search = request.args.get("history_search", "").strip()
-    history_status_filter = request.args.get("history_status", "").strip().lower()
-    history_priority_filter = request.args.get("history_priority", "").strip().lower()
-    history_supplier_filter = request.args.get("history_supplier_id", "").strip()
-
-    show_history = request.args.get("show_history", "0") == "1"
-
     conn = get_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    active_sql = """
+    sql = """
         SELECT
             pr.id,
-            pr.company_id,
             pr.request_number,
             pr.item_id,
             pr.supplier_id,
@@ -8616,25 +8608,18 @@ def purchase_requests():
             pr.unit,
             pr.status,
             pr.priority,
-            pr.needed_by,
-            pr.requested_by,
-            pr.approved_by,
-            pr.ordered_by,
-            pr.notes,
             pr.created_at,
             pr.updated_at,
             s.name AS supplier_name,
             u.full_name AS requester_name,
-            i.item_name AS item_name,
-            pr.order_id,
-            pr.source_type,
+            i.item_name,
             o.order_number
         FROM purchase_requests pr
         LEFT JOIN suppliers s
           ON pr.supplier_id = s.id
          AND s.company_id = pr.company_id
         LEFT JOIN users u
-          ON pr.requested_by = u.id
+          ON pr.created_by = u.id   -- 🔥 FIX
          AND u.company_id = pr.company_id
         LEFT JOIN items i
           ON pr.item_id = i.id
@@ -8643,159 +8628,49 @@ def purchase_requests():
           ON pr.order_id = o.id
          AND o.company_id = pr.company_id
         WHERE pr.company_id = ?
-          AND COALESCE(pr.status, 'draft') NOT IN ('received', 'cancelled', 'rejected')
     """
-    active_params = [company_id]
+
+    params = [company_id]
 
     if search:
-        like_value = f"%{search.lower()}%"
-        active_sql += """
+        sql += """
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
              OR LOWER(COALESCE(pr.title, '')) LIKE ?
              OR LOWER(COALESCE(pr.description, '')) LIKE ?
              OR LOWER(COALESCE(s.name, '')) LIKE ?
              OR LOWER(COALESCE(i.item_name, '')) LIKE ?
-             OR LOWER(COALESCE(o.order_number, '')) LIKE ?
           )
         """
-        active_params.extend([
-            like_value,
-            like_value,
-            like_value,
-            like_value,
-            like_value,
-            like_value,
-        ])
+        like = f"%{search.lower()}%"
+        params.extend([like, like, like, like, like])
 
-    if status_filter in ("draft", "submitted", "approved", "ordered"):
-        active_sql += " AND LOWER(COALESCE(pr.status, 'draft')) = ?"
-        active_params.append(status_filter)
+    if status_filter:
+        sql += " AND LOWER(COALESCE(pr.status, 'draft')) = ?"
+        params.append(status_filter)
 
-    if priority_filter in ("low", "normal", "high"):
-        active_sql += " AND LOWER(COALESCE(pr.priority, 'normal')) = ?"
-        active_params.append(priority_filter)
+    if priority_filter:
+        sql += " AND LOWER(COALESCE(pr.priority, 'normal')) = ?"
+        params.append(priority_filter)
 
     if supplier_filter:
         try:
-            active_sql += " AND pr.supplier_id = ?"
-            active_params.append(int(supplier_filter))
+            sql += " AND pr.supplier_id = ?"
+            params.append(int(supplier_filter))
         except ValueError:
             pass
 
-    active_sql += " ORDER BY pr.created_at DESC, pr.id DESC"
-    cursor.execute(active_sql, tuple(active_params))
-    requests = [dict(row) for row in cursor.fetchall()]
+    sql += " ORDER BY pr.created_at DESC"
 
-    archive_sql = """
-        SELECT
-            pr.id,
-            pr.company_id,
-            pr.request_number,
-            pr.item_id,
-            pr.supplier_id,
-            pr.title,
-            pr.description,
-            pr.quantity,
-            pr.unit,
-            pr.status,
-            pr.priority,
-            pr.needed_by,
-            pr.requested_by,
-            pr.approved_by,
-            pr.ordered_by,
-            pr.notes,
-            pr.created_at,
-            pr.updated_at,
-            s.name AS supplier_name,
-            u.full_name AS requester_name,
-            i.item_name AS item_name,
-            pr.order_id,
-            pr.source_type,
-            o.order_number
-        FROM purchase_requests pr
-        LEFT JOIN suppliers s
-          ON pr.supplier_id = s.id
-         AND s.company_id = pr.company_id
-        LEFT JOIN users u
-          ON pr.requested_by = u.id
-         AND u.company_id = pr.company_id
-        LEFT JOIN items i
-          ON pr.item_id = i.id
-         AND i.company_id = pr.company_id
-        LEFT JOIN orders o
-          ON pr.order_id = o.id
-         AND o.company_id = pr.company_id
-        WHERE pr.company_id = ?
-          AND COALESCE(pr.status, 'draft') IN ('received', 'cancelled', 'rejected')
-    """
-    archive_params = [company_id]
-
-    if history_search:
-        history_like_value = f"%{history_search.lower()}%"
-        archive_sql += """
-          AND (
-                LOWER(COALESCE(pr.request_number, '')) LIKE ?
-             OR LOWER(COALESCE(pr.title, '')) LIKE ?
-             OR LOWER(COALESCE(pr.description, '')) LIKE ?
-             OR LOWER(COALESCE(s.name, '')) LIKE ?
-             OR LOWER(COALESCE(i.item_name, '')) LIKE ?
-             OR LOWER(COALESCE(o.order_number, '')) LIKE ?
-          )
-        """
-        archive_params.extend([
-            history_like_value,
-            history_like_value,
-            history_like_value,
-            history_like_value,
-            history_like_value,
-            history_like_value,
-        ])
-
-    if history_status_filter in ("received", "cancelled", "rejected"):
-        archive_sql += " AND LOWER(COALESCE(pr.status, 'draft')) = ?"
-        archive_params.append(history_status_filter)
-
-    if history_priority_filter in ("low", "normal", "high"):
-        archive_sql += " AND LOWER(COALESCE(pr.priority, 'normal')) = ?"
-        archive_params.append(history_priority_filter)
-
-    if history_supplier_filter:
-        try:
-            archive_sql += " AND pr.supplier_id = ?"
-            archive_params.append(int(history_supplier_filter))
-        except ValueError:
-            pass
-
-    archive_sql += " ORDER BY COALESCE(pr.updated_at, pr.created_at) DESC, pr.id DESC"
-    cursor.execute(archive_sql, tuple(archive_params))
-    archived_requests = [dict(row) for row in cursor.fetchall()]
-
-    cursor.execute("""
-        SELECT id, name
-        FROM suppliers
-        WHERE company_id = ?
-        ORDER BY name ASC
-    """, (company_id,))
-    supplier_options = [dict(row) for row in cursor.fetchall()]
+    cursor.execute(sql, tuple(params))
+    rows = [dict(r) for r in cursor.fetchall()]
 
     conn.close()
 
     return render_template(
         "purchase_requests.html",
-        requests=requests,
-        archived_requests=archived_requests,
-        supplier_options=supplier_options,
-        search=search,
-        status_filter=status_filter,
-        priority_filter=priority_filter,
-        supplier_filter=supplier_filter,
-        history_search=history_search,
-        history_status_filter=history_status_filter,
-        history_priority_filter=history_priority_filter,
-        history_supplier_filter=history_supplier_filter,
-        show_history=show_history,
-        active_page="purchase_requests",
+        requests=rows,
+        active_page="purchase_requests"
     )
 
 
