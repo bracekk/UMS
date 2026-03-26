@@ -9,7 +9,6 @@ USE_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 if USE_POSTGRES:
     import psycopg
-    from psycopg import errors as psycopg_errors
 
     IntegrityError = psycopg.IntegrityError
     OperationalError = psycopg.OperationalError
@@ -38,11 +37,20 @@ class Row(Sequence):
     def keys(self):
         return list(self._columns)
 
+    def items(self):
+        return [(name, self._values[idx]) for idx, name in enumerate(self._columns)]
+
+    def values(self):
+        return list(self._values)
+
+    def get(self, key, default=None):
+        return self._values[self._index[key]] if key in self._index else default
+
     def __contains__(self, item):
-        return item in self._columns
+        return item in self._index
 
     def __repr__(self) -> str:
-        return f"Row({dict(zip(self._columns, self._values))})"
+        return f"Row({dict(self.items())})"
 
 
 if not USE_POSTGRES:
@@ -61,19 +69,19 @@ else:
         "integer": "INTEGER",
         "bigint": "BIGINT",
         "double precision": "REAL",
-        "numeric": "REAL",
+        "numeric": "NUMERIC",
         "real": "REAL",
         "character varying": "TEXT",
         "text": "TEXT",
         "timestamp without time zone": "TIMESTAMP",
         "timestamp with time zone": "TIMESTAMP",
         "date": "DATE",
-        "boolean": "INTEGER",
+        "boolean": "BOOLEAN",
     }
 
     def _convert_type_name(type_name: str) -> str:
-        normalized = type_name.lower()
-        return SQLITE_TO_POSTGRES_TYPES.get(normalized, type_name.upper())
+        normalized = (type_name or "").lower()
+        return SQLITE_TO_POSTGRES_TYPES.get(normalized, (type_name or "TEXT").upper())
 
     def _normalize_sql(sql: str) -> str:
         translated = sql
@@ -84,23 +92,9 @@ else:
             flags=re.IGNORECASE,
         )
         translated = translated.replace("AUTOINCREMENT", "")
-        translated = re.sub(r"\bIFNULL\s*\(", "COALESCE(", translated, flags=re.IGNORECASE)
-
-        if re.match(r"\s*CREATE\s+TABLE", translated, flags=re.IGNORECASE):
-            # Remove SQLite-style FOREIGN KEY constraint lines without corrupting
-            # nearby UNIQUE(...) clauses or leaving dangling parentheses.
-            lines = translated.splitlines()
-            cleaned = []
-            for line in lines:
-                if re.search(r"\bFOREIGN\s+KEY\b", line, flags=re.IGNORECASE):
-                    continue
-                cleaned.append(line)
-            translated = "\n".join(cleaned)
-            translated = re.sub(r",\s*\)", "\n)", translated, flags=re.DOTALL)
-
+        translated = re.sub(r"IFNULL\s*\(", "COALESCE(", translated, flags=re.IGNORECASE)
         translated = translated.replace("?", "%s")
         return translated
-
 
     class CursorWrapper:
         def __init__(self, connection: "ConnectionWrapper"):
@@ -110,8 +104,17 @@ else:
             self._manual_results = None
             self.description = None
 
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            self.close()
+
         def _set_manual_results(self, columns: list[str], rows: list[Sequence[Any]]):
-            self._manual_results = [Row(columns, row) if self.connection.row_factory is Row else tuple(row) for row in rows]
+            self._manual_results = [
+                Row(columns, row) if self.connection.row_factory is Row else tuple(row)
+                for row in rows
+            ]
             self.description = [(name, None, None, None, None, None, None) for name in columns]
 
         def _wrap_row(self, row):
@@ -130,8 +133,9 @@ else:
             self.lastrowid = None
             self._manual_results = None
             stripped = sql.strip()
+            lowered = stripped.lower().rstrip(";")
 
-            pragma_match = PRAGMA_TABLE_INFO_QUERY.fullmatch(stripped.rstrip(";"))
+            pragma_match = PRAGMA_TABLE_INFO_QUERY.fullmatch(lowered)
             if pragma_match:
                 table_name = pragma_match.group("table")
                 self._cursor.execute(
@@ -143,7 +147,7 @@ else:
                         CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END AS notnull,
                         column_default AS dflt_value,
                         CASE
-                            WHEN column_name = 'id' AND column_default LIKE 'nextval(%%' THEN 1
+                            WHEN column_name = 'id' AND column_default LIKE 'nextval(%' THEN 1
                             ELSE 0
                         END AS pk
                     FROM information_schema.columns
@@ -153,13 +157,13 @@ else:
                     """,
                     (table_name,),
                 )
-                rows = []
-                for cid, name, data_type, notnull, dflt_value, pk in self._cursor.fetchall():
-                    rows.append((cid, name, _convert_type_name(data_type), notnull, dflt_value, pk))
+                rows = [
+                    (cid, name, _convert_type_name(data_type), notnull, dflt_value, pk)
+                    for cid, name, data_type, notnull, dflt_value, pk in self._cursor.fetchall()
+                ]
                 self._set_manual_results(["cid", "name", "type", "notnull", "dflt_value", "pk"], rows)
                 return self
 
-            lowered = stripped.lower().rstrip(";")
             if lowered.startswith("pragma "):
                 self._set_manual_results([], [])
                 return self
@@ -183,18 +187,12 @@ else:
             self._cursor.execute(translated_sql, params)
             self.description = self._cursor.description
 
-            if re.match(r"\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)", sql, flags=re.IGNORECASE):
-                table_name = re.match(
-                    r"\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)",
-                    sql,
-                    flags=re.IGNORECASE,
-                ).group(1)
+            insert_match = re.match(r"\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)", sql, flags=re.IGNORECASE)
+            if insert_match:
+                table_name = insert_match.group(1)
                 helper = self.connection._raw.cursor()
                 try:
-                    helper.execute(
-                        "SELECT currval(pg_get_serial_sequence(%s, 'id'))",
-                        (table_name,),
-                    )
+                    helper.execute("SELECT currval(pg_get_serial_sequence(%s, 'id'))", (table_name,))
                     row = helper.fetchone()
                     self.lastrowid = row[0] if row else None
                 except Exception:
@@ -202,6 +200,12 @@ else:
                 finally:
                     helper.close()
 
+            return self
+
+        def executemany(self, sql: str, seq_of_params):
+            translated_sql = _normalize_sql(sql)
+            self._cursor.executemany(translated_sql, seq_of_params)
+            self.description = self._cursor.description
             return self
 
         def fetchone(self):
@@ -218,9 +222,16 @@ else:
                 return rows
             return self._wrap_rows(self._cursor.fetchall())
 
+        def fetchmany(self, size=None):
+            if self._manual_results is not None:
+                size = size or len(self._manual_results)
+                rows = self._manual_results[:size]
+                self._manual_results = self._manual_results[size:]
+                return rows
+            return self._wrap_rows(self._cursor.fetchmany(size))
+
         def close(self):
             self._cursor.close()
-
 
     class ConnectionWrapper:
         def __init__(self, dsn: str):
@@ -244,6 +255,15 @@ else:
         def close(self):
             self._raw.close()
 
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            if exc_type is None:
+                self.commit()
+            else:
+                self.rollback()
+            self.close()
 
     def connect(_database=None, timeout=30, **_kwargs):
         return ConnectionWrapper(DATABASE_URL)
