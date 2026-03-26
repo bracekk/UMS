@@ -22,6 +22,9 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from ums_core.bootstrap import bootstrap_database
+import os
+
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-key-change-me")
@@ -29,8 +32,58 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-key-change-me")
 
 load_dotenv()
 
+
+DB_PATH = os.environ.get("DATABASE_PATH", "database.db")
+
+
+def get_connection():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA foreign_keys = ON;")
+    return conn
+
+
+
+def ensure_render_safe_schema():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS workstation_groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            color TEXT NOT NULL DEFAULT '#6366f1',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(company_id, name)
+        )
+    """)
+
+    alter_statements = [
+        "ALTER TABLE workstations ADD COLUMN group_id INTEGER",
+        "ALTER TABLE workstations ADD COLUMN cost_per_hour REAL NOT NULL DEFAULT 0",
+        "ALTER TABLE order_batches ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE products ADD COLUMN group_id INTEGER",
+    ]
+
+    for sql in alter_statements:
+        try:
+            cursor.execute(sql)
+        except sqlite3.OperationalError:
+            pass
+
+    conn.commit()
+    conn.close()
+
+
+ensure_render_safe_schema()
+
+
+
 def init_db():
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -493,7 +546,7 @@ def ensure_database_ready():
 
 
 def ensure_workstation_groups_and_batch_delete_schema():
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -531,7 +584,7 @@ ensure_workstation_groups_and_batch_delete_schema()
 ensure_database_ready()
 
 def seed_data():
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("SELECT COUNT(*) FROM orders")
@@ -1234,7 +1287,7 @@ def create_sqlite_backup(reason="manual"):
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     backup_path = os.path.join(BACKUP_DIR, f"ums_{reason}_{timestamp}.db")
 
-    source_conn = sqlite3.connect("database.db")
+    source_conn = get_connection()
     backup_conn = sqlite3.connect(backup_path)
 
     try:
@@ -1367,7 +1420,7 @@ def fetch_orders_export_rows(company_id, args):
     due_date_from = args.get("due_date_from", "").strip()
     due_date_to = args.get("due_date_to", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -1431,7 +1484,7 @@ def fetch_jobs_export_rows(company_id, args):
     if "All" in statuses:
         statuses = []
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -1507,7 +1560,7 @@ def fetch_suppliers_export_rows(company_id, args):
     search = args.get("search", "").strip()
     status_filter = args.get("status", "").strip().lower()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     sql = """
@@ -1551,7 +1604,7 @@ def fetch_suppliers_export_rows(company_id, args):
 
 
 def fetch_shortage_export_rows(company_id):
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -1581,7 +1634,7 @@ def fetch_reports_export_rows(company_id, args):
     report_type = args.get("report_type", "").strip()
     job_search = args.get("job_search", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -1650,7 +1703,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
     priority_filter = args.get(priority_key, "").strip().lower()
     supplier_filter = args.get(supplier_key, "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     sql = """
@@ -1724,7 +1777,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
 
 
 def fetch_inventory_export_rows(company_id):
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -1761,7 +1814,7 @@ def fetch_inventory_export_rows(company_id):
 
 
 def fetch_products_export_rows(company_id):
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -1783,7 +1836,7 @@ def fetch_products_export_rows(company_id):
 
 
 def fetch_items_export_rows(company_id):
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -1828,7 +1881,7 @@ def get_order_root_product_and_quantity(cursor, order_id, company_id=None):
     }
 
 def fetch_order_material_rows(company_id, order_id):
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -1898,7 +1951,7 @@ def fetch_planner_export_rows(company_id, year, month):
     last_day = calendar.monthrange(year, month)[1]
     month_end = f"{year:04d}-{month:02d}-{last_day:02d}"
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -3241,7 +3294,7 @@ def get_role_default_permissions(role):
 
 
 def get_user_permission_overrides(user_id):
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -3363,7 +3416,7 @@ def login():
         email = request.form["email"].strip()
         password = request.form["password"]
 
-        conn = sqlite3.connect("database.db")
+        conn = get_connection()
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -3409,7 +3462,7 @@ def register():
 
         hashed_password = generate_password_hash(password)
 
-        conn = sqlite3.connect("database.db")
+        conn = get_connection()
         cursor = conn.cursor()
 
         try:
@@ -3463,7 +3516,7 @@ def dashboard():
     company_id = get_company_id()
     user_id = session.get("user_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -3618,7 +3671,7 @@ def orders():
     due_date_to = request.args.get("due_date_to", "").strip()
     group_id = request.args.get("group_id", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -3724,7 +3777,7 @@ def new_order():
     company_id = get_company_id()
     selected_group_id = request.args.get("group_id", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -3847,7 +3900,7 @@ def order_batches():
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -3911,7 +3964,7 @@ def new_order_batch():
     company_id = get_company_id()
     user_id = session.get("user_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -3964,7 +4017,7 @@ def delete_order_batch(batch_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     batch = fetch_batch_with_stats(cursor, batch_id, company_id)
@@ -4005,7 +4058,7 @@ def view_order_batch(batch_id):
     company_id = get_company_id()
     selected_group_keys = request.args.getlist("preview_group")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     batch = fetch_batch_with_stats(cursor, batch_id, company_id)
@@ -4142,7 +4195,7 @@ def add_order_to_batch(batch_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     batch = fetch_batch_with_stats(cursor, batch_id, company_id)
@@ -4232,7 +4285,7 @@ def edit_batch_order(batch_id, batch_order_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     batch = fetch_batch_with_stats(cursor, batch_id, company_id)
@@ -4383,7 +4436,7 @@ def delete_batch_order(batch_id, batch_order_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     batch = fetch_batch_with_stats(cursor, batch_id, company_id)
@@ -4420,7 +4473,7 @@ def buy_order_batch_materials(batch_id):
     company_id = get_company_id()
     user_id = session.get("user_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -4448,7 +4501,7 @@ def launch_order_batch(batch_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -4472,7 +4525,7 @@ def edit_order(order_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -4561,7 +4614,7 @@ def order_materials(order_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -4651,7 +4704,7 @@ def delete_order(order_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     require_company_record(cursor, "orders", order_id, company_id)
@@ -4687,7 +4740,7 @@ def items():
     item_code = request.args.get("item_code", "").strip()
     item_name = request.args.get("item_name", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -4751,7 +4804,7 @@ def new_item():
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -4839,7 +4892,7 @@ def edit_item(item_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -4955,7 +5008,7 @@ def delete_item(item_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -4993,7 +5046,7 @@ def products():
     product_name = request.args.get("product_name", "").strip()
     group_id = request.args.get("group_id", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -5075,7 +5128,7 @@ def new_product():
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -5133,7 +5186,7 @@ def edit_product(product_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -5218,7 +5271,7 @@ def product_groups():
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -5258,7 +5311,7 @@ def edit_product_group(group_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
         "SELECT id, name, COALESCE(description, '') FROM product_groups WHERE id = ? AND company_id = ?",
@@ -5303,7 +5356,7 @@ def delete_product_group(group_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("UPDATE products SET group_id = NULL WHERE group_id = ? AND company_id = ?", (group_id, company_id))
     cursor.execute("DELETE FROM product_groups WHERE id = ? AND company_id = ?", (group_id, company_id))
@@ -5319,7 +5372,7 @@ def delete_product(product_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -5361,7 +5414,7 @@ def product_jobs(product_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -5445,7 +5498,7 @@ def add_product_job(product_id):
     sequence = int(request.form["sequence"])
     estimated_hours = float(request.form["estimated_hours"] or 0)
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -5481,7 +5534,7 @@ def edit_product_job(job_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -5568,7 +5621,7 @@ def delete_product_job(job_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -5603,7 +5656,7 @@ def product_bom(product_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -5711,7 +5764,7 @@ def product_cost(product_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -5764,7 +5817,7 @@ def add_bom_item(product_id):
     item_id = request.form.get("item_id")
     child_product_id = request.form.get("child_product_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -5822,7 +5875,7 @@ def delete_bom_item(bom_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -5858,7 +5911,7 @@ def new_workstation():
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -5941,7 +5994,7 @@ def edit_workstation(workstation_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -6055,7 +6108,7 @@ def delete_workstation(workstation_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -6113,7 +6166,7 @@ def jobs():
     if "All" in statuses:
         statuses = []
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -6265,7 +6318,7 @@ def update_job_workstation(job_id):
     company_id = get_company_id()
     new_workstation_id = int(request.form["workstation_id"])
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -6304,7 +6357,7 @@ def update_job_status(job_id, new_status):
         flash("Invalid status.", "error")
         return redirect_back("jobs")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -6434,7 +6487,7 @@ def update_job_progress(job_id):
     company_id = get_company_id()
     completed_quantity = float(request.form.get("completed_quantity", 0) or 0)
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -6502,7 +6555,7 @@ def product_transfers():
     date_from = request.args.get("date_from", "").strip()
     date_to = request.args.get("date_to", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -6702,7 +6755,7 @@ def create_stock_destination():
         flash("Destination name is required.", "error")
         return redirect(url_for("product_transfers"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -6754,7 +6807,7 @@ def undo_product_transfer(transfer_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -6846,7 +6899,7 @@ def create_product_transfer():
         flash("Transfer quantity must be greater than 0.", "error")
         return redirect(url_for("product_transfers"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -6943,7 +6996,7 @@ def inventory():
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7049,7 +7102,7 @@ def materials_shortage():
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7269,7 +7322,7 @@ def planner():
     next_month = 1 if month == 12 else month + 1
     next_year = year + 1 if month == 12 else year
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     # svarbu: perstatom visas planner datas pagal dabartinę formulę,
@@ -7442,7 +7495,7 @@ def update_planner_job_date(job_id):
     planned_start = request.form.get("planned_start", "").strip()
     workstation_id = request.form.get("workstation_id", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7558,7 +7611,7 @@ def split_job(job_id):
         flash("Split requires at least 2 valid rows.", "error")
         return redirect_back("jobs")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -7606,7 +7659,7 @@ def planner_split_job(job_id):
     except ValueError as e:
         return jsonify({"ok": False, "error": str(e)}), 400
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     try:
@@ -7657,7 +7710,7 @@ def workstations():
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7759,7 +7812,7 @@ def create_workstation_group():
         flash("Workstation group name is required.", "error")
         return redirect(url_for("workstations"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7804,7 +7857,7 @@ def delete_workstation_group(group_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7838,7 +7891,7 @@ def delete_workstation_group(group_id):
 def users():
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7896,7 +7949,7 @@ def new_user():
             flash("Invalid role.", "error")
             return redirect(url_for("new_user"))
 
-        conn = sqlite3.connect("database.db")
+        conn = get_connection()
         cursor = conn.cursor()
 
         cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
@@ -7959,7 +8012,7 @@ def update_user_role(user_id):
         flash("Invalid role.", "error")
         return redirect(url_for("users"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -7997,7 +8050,7 @@ def update_user_role(user_id):
 def update_user_permissions(user_id):
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -8040,7 +8093,7 @@ def account():
     user_id = session.get("user_id")
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -8105,7 +8158,7 @@ def change_password():
         flash("New password must be at least 6 characters.", "error")
         return redirect(url_for("account"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -8153,7 +8206,7 @@ def suppliers():
     search = request.args.get("search", "").strip()
     status_filter = request.args.get("status", "").strip().lower()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     sql = """
@@ -8215,7 +8268,7 @@ def new_supplier():
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -8276,7 +8329,7 @@ def edit_supplier(supplier_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -8377,7 +8430,7 @@ def purchase_requests():
 
     show_history = request.args.get("show_history", "0") == "1"
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     active_sql = """
@@ -8585,7 +8638,7 @@ def new_purchase_request():
     company_id = get_company_id()
     user_id = session.get("user_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -8791,7 +8844,7 @@ def update_request_status(request_id, status):
         flash("Invalid status.", "error")
         return redirect(url_for("purchase_requests"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -8863,7 +8916,7 @@ def edit_purchase_request(request_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -9082,7 +9135,7 @@ def receive_purchase_request(request_id):
 
     company_id = get_company_id()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -9148,7 +9201,7 @@ def create_request_from_shortage(item_id):
     company_id = get_company_id()
     user_id = session.get("user_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -9277,7 +9330,7 @@ def save_dashboard_layout():
             "h": max(100, h)
         })
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     save_dashboard_layout_record(cursor, user_id, company_id, clean_layout, "dashboard")
@@ -9301,7 +9354,7 @@ def reports():
     report_type = request.args.get("report_type", "").strip()
     job_search = request.args.get("job_search", "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     query = """
@@ -9414,7 +9467,7 @@ def new_report():
     company_id = get_company_id()
     user_id = session.get("user_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     if request.method == "POST":
@@ -9542,7 +9595,7 @@ def forgot_password():
             flash("Email is required.", "error")
             return render_template("forgot_password.html")
 
-        conn = sqlite3.connect("database.db")
+        conn = get_connection()
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -9590,7 +9643,7 @@ def forgot_password():
 def reset_password(token):
     token_hash = hash_reset_token(token)
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -9940,7 +9993,7 @@ def order_shortages(order_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -10017,7 +10070,7 @@ def create_purchase_request_from_shortage(shortage_id):
     company_id = get_company_id()
     user_id = session.get("user_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
@@ -10192,7 +10245,7 @@ def add_item_stock(item_id):
         flash("Add quantity must be greater than 0.", "error")
         return redirect(request.referrer or url_for("inventory"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -10308,7 +10361,7 @@ def add_product_stock(product_id):
         flash("Add quantity must be greater than 0.", "error")
         return redirect(request.referrer or url_for("inventory"))
 
-    conn = sqlite3.connect("database.db")
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
