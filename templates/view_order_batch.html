@@ -7,7 +7,7 @@
     <div class="jobs-header-left">
       <span class="eyebrow-label">Order batch</span>
       <h1>{{ batch.batch_number }} — {{ batch.name }}</h1>
-      <p>Plan costs, materials and workstation load before creating any real jobs.</p>
+      <p>Plan costs, materials and workstation group load before creating any real jobs.</p>
     </div>
 
     <div class="jobs-header-right ubatch-header-actions">
@@ -21,11 +21,11 @@
         <form method="POST" action="{{ url_for('launch_order_batch', batch_id=batch.id) }}" class="inline-form" onsubmit="return confirm('Launch this batch and create real orders/jobs?');">
           <button type="submit" class="dashboard-btn primary">Launch Batch</button>
         </form>
-
-        <form method="POST" action="{{ url_for('delete_order_batch', batch_id=batch.id) }}" class="inline-form" onsubmit="return confirm('Delete this draft batch?');">
-          <button type="submit" class="dashboard-btn danger">Delete Batch</button>
-        </form>
       {% endif %}
+
+      <form method="POST" action="{{ url_for('delete_order_batch', batch_id=batch.id) }}" class="inline-form" onsubmit="return confirm('{% if batch.status == 'draft' %}Delete this draft batch?{% else %}Delete this launched batch from the active list? Real launched orders/jobs will stay.{% endif %}');">
+        <button type="submit" class="dashboard-btn danger">Delete Batch</button>
+      </form>
     </div>
   </div>
 
@@ -224,20 +224,20 @@
     <div class="card-header">
       <div>
         <span class="card-kicker">Capacity preview</span>
-        <h4>Planned Workstation Load</h4>
+        <h4>Planned Workstation Group Load</h4>
       </div>
     </div>
 
     <form method="GET" class="batch-preview-filter-form">
-      {% for workstation in involved_workstations %}
+      {% for group in involved_groups %}
         <label class="jobs-pill-option">
           <input
             type="checkbox"
-            name="preview_workstation"
-            value="{{ workstation.id }}"
-            {% if not selected_workstation_ids or workstation.id|string in selected_workstation_ids %}checked{% endif %}
+            name="preview_group"
+            value="{{ group.group_key }}"
+            {% if not selected_group_keys or group.group_key in selected_group_keys %}checked{% endif %}
           >
-          <span>{{ workstation.name }}</span>
+          <span>{{ group.name }}</span>
         </label>
       {% endfor %}
 
@@ -245,28 +245,28 @@
     </form>
 
     <div class="batch-load-grid">
-      {% if planned_workstations %}
-        {% for ws in planned_workstations %}
-          {% set safe_percent = ws.preview_percent if ws.preview_percent < 100 else 100 %}
+      {% if planned_groups %}
+        {% for group in planned_groups %}
+          {% set safe_percent = group.preview_percent if group.preview_percent < 100 else 100 %}
           <article class="batch-load-card">
-            <div class="batch-load-ring" style="--ring-percent: {{ safe_percent }}%; --ring-color: {{ ws.color }};">
-              <span>{{ ws.preview_percent|round(1) }}%</span>
+            <div class="batch-load-ring" style="--ring-percent: {{ safe_percent }}%; --ring-color: {{ group.color }};">
+              <span>{{ group.preview_percent|round(1) }}%</span>
             </div>
 
             <div class="batch-load-copy">
-              <h4>{{ ws.name }}</h4>
-              <p>Current {{ ws.current_used|round(2) }} h · Batch {{ ws.planned_batch_hours|round(2) }} h</p>
+              <h4>{{ group.name }}</h4>
+              <p>Current {{ group.current_used|round(2) }} h · Batch {{ group.planned_batch_hours|round(2) }} h</p>
 
               <div class="batch-load-metrics">
-                <span>Preview total <strong>{{ ws.preview_total|round(2) }} h</strong></span>
-                <span>Capacity <strong>{{ ws.monthly_capacity|round(2) }} h</strong></span>
-                <span>Cost / hour <strong>€ {{ '%.2f'|format(ws.cost_per_hour) }}</strong></span>
+                <span>Preview total <strong>{{ group.preview_total|round(2) }} h</strong></span>
+                <span>Capacity <strong>{{ group.monthly_capacity|round(2) }} h</strong></span>
+                <span>Stations <strong>{{ group.workstation_count }}</strong></span>
               </div>
             </div>
           </article>
         {% endfor %}
       {% else %}
-        <div class="empty-table-message">No workstation preview available yet.</div>
+        <div class="empty-table-message">No workstation group preview available yet.</div>
       {% endif %}
     </div>
   </section>
@@ -408,13 +408,14 @@
   const hiddenInput = productSelect.querySelector('input[type="hidden"]');
   const options = Array.from(productSelect.querySelectorAll('.custom-option'));
 
-  function refreshOptions() {
-    const selectedGroup = groupFilterInput.value;
+  function filterProducts() {
+    const selectedGroup = groupFilterInput.value || '';
     let firstVisible = null;
     let currentStillVisible = false;
 
     options.forEach((option) => {
-      const visible = !selectedGroup || (option.dataset.groupId || '') === selectedGroup;
+      const optionGroup = option.dataset.groupId || '';
+      const visible = !selectedGroup || optionGroup === selectedGroup;
       option.style.display = visible ? '' : 'none';
 
       if (visible && !firstVisible) {
@@ -424,34 +425,34 @@
       if (visible && hiddenInput.value && option.dataset.value === hiddenInput.value) {
         currentStillVisible = true;
       }
+
+      if (!visible) {
+        option.classList.remove('selected');
+      }
     });
 
     if (currentStillVisible) {
       const selected = options.find((option) => option.dataset.value === hiddenInput.value);
       if (selected) {
         triggerText.textContent = selected.textContent.trim();
-        options.forEach((option) => {
-          option.classList.toggle('selected', option === selected);
-        });
+        options.forEach((option) => option.classList.toggle('selected', option === selected));
         return;
       }
     }
 
     if (firstVisible) {
-      options.forEach((option) => {
-        option.classList.toggle('selected', option === firstVisible);
-      });
       hiddenInput.value = firstVisible.dataset.value;
       triggerText.textContent = firstVisible.textContent.trim();
+      options.forEach((option) => option.classList.toggle('selected', option === firstVisible));
     } else {
-      options.forEach((option) => option.classList.remove('selected'));
       hiddenInput.value = '';
       triggerText.textContent = 'No products in this group';
+      options.forEach((option) => option.classList.remove('selected'));
     }
   }
 
-  groupFilterInput.addEventListener('change', refreshOptions);
-  refreshOptions();
+  groupFilterInput.addEventListener('change', filterProducts);
+  filterProducts();
 })();
 </script>
 {% endblock %}

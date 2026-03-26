@@ -5,7 +5,7 @@
   <div class="jobs-header-left">
     <span class="eyebrow-label">Orders</span>
     <h1>Order Batches</h1>
-    <p>Create planning batches, see cost before launch, and remove draft batches cleanly when plans change.</p>
+    <p>Create planning batches, see cost before launch, preview workstation group load, and remove batches cleanly when plans change.</p>
   </div>
   <div class="jobs-header-right">
     <a href="{{ url_for('orders') }}" class="dashboard-btn secondary">Back to Orders</a>
@@ -14,17 +14,38 @@
 </div>
 
 <div class="dashboard-table-card section-spacing">
-  <div class="card-header"><div><span class="card-kicker">Planning containers</span><h4>All Batches</h4></div></div>
+  <div class="card-header">
+    <div>
+      <span class="card-kicker">Planning containers</span>
+      <h4>All Batches</h4>
+    </div>
+  </div>
+
   <div class="table-wrapper">
     <table class="orders-table batch-list-table">
       <thead>
-        <tr><th>Batch</th><th>Name</th><th>Status</th><th>Orders</th><th>Total Qty</th><th>Materials</th><th>Jobs</th><th>Total</th><th>Planned Load</th><th>Actions</th></tr>
+        <tr>
+          <th>Batch</th>
+          <th>Name</th>
+          <th>Status</th>
+          <th>Orders</th>
+          <th>Total Qty</th>
+          <th>Materials</th>
+          <th>Jobs</th>
+          <th>Total</th>
+          <th>Planned Load</th>
+          <th>Actions</th>
+        </tr>
       </thead>
       <tbody>
         {% if batches %}
           {% for batch in batches %}
             {% set status_class = 'waiting' %}
-            {% if batch.status == 'launched' %}{% set status_class = 'completed' %}{% elif batch.status == 'archived' %}{% set status_class = 'delayed' %}{% endif %}
+            {% if batch.status == 'launched' %}
+              {% set status_class = 'completed' %}
+            {% elif batch.status == 'archived' %}
+              {% set status_class = 'delayed' %}
+            {% endif %}
             <tr>
               <td><strong>{{ batch.batch_number }}</strong></td>
               <td>{{ batch.name }}</td>
@@ -34,21 +55,22 @@
               <td>€ {{ '%.2f'|format(batch.materials_cost) }}</td>
               <td>€ {{ '%.2f'|format(batch.jobs_cost) }}</td>
               <td><strong>€ {{ '%.2f'|format(batch.total_cost) }}</strong></td>
-              <td>{{ batch.planned_workstations }} ws / {{ batch.planned_hours|round(2) }} h</td>
+              <td>{{ batch.planned_groups }} group(s) / {{ batch.planned_hours|round(2) }} h</td>
               <td class="actions-cell">
                 <div class="table-actions-inline">
                   <a href="{{ url_for('view_order_batch', batch_id=batch.id) }}" class="table-action-btn btn-primary">Open</a>
-                  {% if batch.status == 'draft' %}
-                  <form method="POST" action="{{ url_for('delete_order_batch', batch_id=batch.id) }}" class="inline-form" onsubmit="return confirm('Delete this draft batch?');">
+
+                  <form method="POST" action="{{ url_for('delete_order_batch', batch_id=batch.id) }}" class="inline-form" onsubmit="return confirm('{% if batch.status == 'draft' %}Delete this draft batch?{% else %}Delete this launched batch from the active list? Real launched orders/jobs will stay.{% endif %}');">
                     <button type="submit" class="table-action-btn btn-danger">Delete</button>
                   </form>
-                  {% endif %}
                 </div>
               </td>
             </tr>
           {% endfor %}
         {% else %}
-          <tr><td colspan="10" class="empty-table-message">No batches created yet.</td></tr>
+          <tr>
+            <td colspan="10" class="empty-table-message">No batches created yet.</td>
+          </tr>
         {% endif %}
       </tbody>
     </table>

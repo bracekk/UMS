@@ -496,3 +496,272 @@
   flex-direction: column;
   justify-content: space-between;
 }
+
+/* ========================================
+   BATCHES MOBILE POLISH
+   put at absolute end of batches.css
+======================================== */
+
+@media (max-width: 1024px) {
+  .ubatch-header {
+    gap: 16px !important;
+  }
+
+  .ubatch-header-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .ubatch-header-actions .inline-form {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  .ubatch-header-actions .dashboard-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .ubatch-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ubatch-top-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  .ubatch-summary {
+    order: -1;
+  }
+
+  .ubatch-card {
+    padding: 18px !important;
+    border-radius: 22px !important;
+  }
+
+  .ubatch-card__header {
+    margin-bottom: 16px !important;
+  }
+
+  .ubatch-card__header h3 {
+    font-size: 1.7rem !important;
+    line-height: 1.04 !important;
+  }
+
+  .ubatch-form__grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .ubatch-field--order-number,
+  .ubatch-field--group,
+  .ubatch-field--product,
+  .ubatch-field--quantity,
+  .ubatch-field--due-date,
+  .ubatch-field--priority,
+  .ubatch-field--notes {
+    grid-column: auto !important;
+  }
+
+  .ubatch-form__actions {
+    justify-content: stretch !important;
+  }
+
+  .ubatch-form__actions .dashboard-btn {
+    width: 100% !important;
+  }
+
+  .batch-preview-filter-form {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .batch-preview-filter-form .jobs-pill-option {
+    width: 100% !important;
+  }
+
+  .batch-preview-filter-form .dashboard-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .batch-load-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .batch-load-card {
+    align-items: flex-start !important;
+  }
+
+  .ubatch-section-card {
+    padding: 16px !important;
+    border-radius: 20px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .batch-list-table,
+  .batch-order-cost-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+  }
+
+  .batch-list-table thead,
+  .batch-order-cost-table thead {
+    display: none !important;
+  }
+
+  .batch-list-table tbody,
+  .batch-order-cost-table tbody,
+  .batch-list-table tr,
+  .batch-order-cost-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .batch-list-table tr,
+  .batch-order-cost-table tr {
+    margin-bottom: 14px !important;
+    padding: 14px !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(148, 163, 184, 0.12) !important;
+  }
+
+  .batch-list-table td,
+  .batch-order-cost-table td {
+    display: grid !important;
+    grid-template-columns: 112px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    align-items: start !important;
+    width: 100% !important;
+    padding: 8px 0 !important;
+    border: 0 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+  }
+
+  .batch-list-table td::before,
+  .batch-order-cost-table td::before {
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: rgba(184, 194, 220, 0.78) !important;
+    content: "";
+  }
+
+  .batch-list-table td:nth-child(1)::before { content: "Batch"; }
+  .batch-list-table td:nth-child(2)::before { content: "Name"; }
+  .batch-list-table td:nth-child(3)::before { content: "Status"; }
+  .batch-list-table td:nth-child(4)::before { content: "Orders"; }
+  .batch-list-table td:nth-child(5)::before { content: "Total Qty"; }
+  .batch-list-table td:nth-child(6)::before { content: "Materials"; }
+  .batch-list-table td:nth-child(7)::before { content: "Jobs"; }
+  .batch-list-table td:nth-child(8)::before { content: "Total"; }
+  .batch-list-table td:nth-child(9)::before { content: "Load"; }
+  .batch-list-table td:nth-child(10)::before { content: "Actions"; }
+
+  .batch-order-cost-table td:nth-child(1)::before { content: "Order"; }
+  .batch-order-cost-table td:nth-child(2)::before { content: "Product"; }
+  .batch-order-cost-table td:nth-child(3)::before { content: "Group"; }
+  .batch-order-cost-table td:nth-child(4)::before { content: "Qty"; }
+  .batch-order-cost-table td:nth-child(5)::before { content: "Due Date"; }
+  .batch-order-cost-table td:nth-child(6)::before { content: "Priority"; }
+  .batch-order-cost-table td:nth-child(7)::before { content: "Materials"; }
+  .batch-order-cost-table td:nth-child(8)::before { content: "Jobs"; }
+  .batch-order-cost-table td:nth-child(9)::before { content: "Total"; }
+  .batch-order-cost-table td:nth-child(10)::before { content: "Launched"; }
+  .batch-order-cost-table td:nth-child(11)::before { content: "Actions"; }
+
+  .batch-list-table .actions-cell,
+  .batch-order-cost-table .actions-cell {
+    display: block !important;
+  }
+
+  .batch-list-table .table-actions-inline,
+  .batch-order-cost-table .table-actions-inline {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .batch-list-table .table-actions-inline .table-action-btn,
+  .batch-order-cost-table .table-actions-inline .table-action-btn,
+  .batch-list-table .actions-cell .table-action-btn,
+  .batch-order-cost-table .actions-cell .table-action-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .batch-list-table .inline-form,
+  .batch-order-cost-table .inline-form {
+    width: 100% !important;
+    display: flex !important;
+  }
+
+  .batch-list-table .inline-form button,
+  .batch-order-cost-table .inline-form button {
+    width: 100% !important;
+  }
+
+  .batch-load-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+  }
+
+  .batch-load-ring {
+    margin-bottom: 0 !important;
+  }
+
+  .ubatch-summary__row {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .ubatch-summary__row strong {
+    text-align: left !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .ubatch-card {
+    padding: 16px !important;
+  }
+
+  .ubatch-card__header h3 {
+    font-size: 1.48rem !important;
+  }
+
+  .ubatch-field--floating input,
+  .ubatch-select__trigger {
+    min-height: 54px !important;
+    height: 54px !important;
+  }
+
+  .ubatch-field--floating textarea {
+    min-height: 120px !important;
+    padding-top: 28px !important;
+  }
+
+  .batch-list-table td,
+  .batch-order-cost-table td {
+    grid-template-columns: 96px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    font-size: 0.92rem !important;
+  }
+
+  .batch-list-table td::before,
+  .batch-order-cost-table td::before {
+    font-size: 0.68rem !important;
+  }
+}

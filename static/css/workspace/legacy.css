@@ -10332,3 +10332,617 @@ textarea::placeholder {
     max-height: 240px;
   }
 }
+
+
+/* ========================================
+   MOBILE TOPBAR / HAMBURGER HOTFIX
+   put at absolute end of legacy.css
+======================================== */
+
+@media (max-width: 1024px) {
+  .topbar {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 12px !important;
+    min-height: 72px !important;
+    padding: 12px 14px !important;
+  }
+
+  .topbar-left {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .topbar-right {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  .mobile-nav-toggle {
+    margin: 0 !important;
+    align-self: center !important;
+    justify-self: start !important;
+    width: 42px !important;
+    height: 42px !important;
+    flex: 0 0 42px !important;
+  }
+
+  .topbar-title {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 14px !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: fit-content !important;
+    font-size: 0.74rem !important;
+    letter-spacing: 0.1em !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+
+  .account-menu {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+  }
+
+  .account-menu-trigger {
+    min-height: 42px !important;
+    height: 42px !important;
+    margin: 0 !important;
+    align-items: center !important;
+  }
+
+  .jobs-header,
+  .dashboard-header,
+  .planner-header,
+  .page-header,
+  .dashboard-topbar {
+    margin-bottom: 16px !important;
+    gap: 14px !important;
+  }
+
+  .jobs-header-right,
+  .dashboard-header-right,
+  .planner-header-right,
+  .topbar-actions,
+  .form-actions,
+  .preview-actions {
+    width: 100% !important;
+    justify-content: flex-start !important;
+  }
+
+  .jobs-header-right .dashboard-btn,
+  .dashboard-header-right .dashboard-btn,
+  .planner-header-right .dashboard-btn,
+  .form-actions .dashboard-btn,
+  .preview-actions .dashboard-btn {
+    min-height: 42px !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) 40px !important;
+    min-height: 64px !important;
+    padding: 10px 12px !important;
+    gap: 10px !important;
+  }
+
+  .topbar-left {
+    grid-template-columns: 40px minmax(0, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .mobile-nav-toggle {
+    width: 40px !important;
+    height: 40px !important;
+    flex-basis: 40px !important;
+  }
+
+  .topbar-title {
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 12px !important;
+    font-size: 0.68rem !important;
+    letter-spacing: 0.09em !important;
+    max-width: 100% !important;
+  }
+
+  .account-menu-trigger {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+  }
+
+  .account-menu-label {
+    display: none !important;
+  }
+
+  .account-menu-caret {
+    margin: 0 !important;
+  }
+
+  .content {
+    padding: 12px !important;
+  }
+
+  .jobs-header-left h1,
+  .dashboard-header-left h1,
+  .planner-header-left h1,
+  .page-header h1,
+  .page-header h2,
+  .page-header h3 {
+    font-size: 1.22rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .jobs-header-left p,
+  .dashboard-header-left p,
+  .planner-header-left p,
+  .page-header p {
+    font-size: 0.88rem !important;
+    line-height: 1.5 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: 10px 10px !important;
+    gap: 8px !important;
+  }
+
+  .topbar-left {
+    gap: 8px !important;
+  }
+
+  .topbar-title {
+    padding: 0 10px !important;
+    font-size: 0.66rem !important;
+  }
+
+  .content {
+    padding: 10px !important;
+  }
+}
+
+/* ========================================
+   MOBILE TABLE CARDS
+   products / orders / shortages / transfers
+   put at very end of legacy.css
+======================================== */
+
+@media (max-width: 760px) {
+  .products-table,
+  .orders-cost-table,
+  .shortage-table-card .orders-table,
+  .dashboard-table-card .orders-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+  }
+
+  .products-table thead,
+  .orders-cost-table thead,
+  .shortage-table-card .orders-table thead,
+  .dashboard-table-card .orders-table thead {
+    display: none !important;
+  }
+
+  .products-table tbody,
+  .orders-cost-table tbody,
+  .shortage-table-card .orders-table tbody,
+  .dashboard-table-card .orders-table tbody,
+  .products-table tr,
+  .orders-cost-table tr,
+  .shortage-table-card .orders-table tr,
+  .dashboard-table-card .orders-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .products-table tr,
+  .orders-cost-table tr,
+  .shortage-table-card .orders-table tr,
+  .dashboard-table-card .orders-table tr {
+    margin-bottom: 14px !important;
+    padding: 14px !important;
+    border-radius: 18px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(148, 163, 184, 0.12) !important;
+    box-shadow: 0 10px 24px rgba(2, 6, 23, 0.18) !important;
+  }
+
+  .products-table td,
+  .orders-cost-table td,
+  .shortage-table-card .orders-table td,
+  .dashboard-table-card .orders-table td {
+    display: grid !important;
+    grid-template-columns: 108px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    width: 100% !important;
+    padding: 8px 0 !important;
+    border: 0 !important;
+    align-items: start !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    min-width: 0 !important;
+  }
+
+  .products-table td::before,
+  .orders-cost-table td::before,
+  .shortage-table-card .orders-table td::before,
+  .dashboard-table-card .orders-table td::before {
+    content: "";
+    display: block !important;
+    font-size: 0.7rem !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: rgba(184, 194, 220, 0.76) !important;
+    padding-top: 2px !important;
+  }
+
+  /* PRODUCTS */
+  .products-table td:nth-child(1)::before { content: "Product"; }
+  .products-table td:nth-child(2)::before { content: "Group"; }
+  .products-table td:nth-child(3)::before { content: "Unit"; }
+  .products-table td:nth-child(4)::before { content: "Time / Unit"; }
+  .products-table td:nth-child(5)::before { content: "Stock"; }
+  .products-table td:nth-child(6)::before { content: "Materials"; }
+  .products-table td:nth-child(7)::before { content: "Jobs"; }
+  .products-table td:nth-child(8)::before { content: "Total"; }
+  .products-table td:nth-child(9)::before { content: "Actions"; }
+
+  /* ORDERS */
+  .orders-cost-table td:nth-child(1)::before { content: "Order"; }
+  .orders-cost-table td:nth-child(2)::before { content: "Product"; }
+  .orders-cost-table td:nth-child(3)::before { content: "Group"; }
+  .orders-cost-table td:nth-child(4)::before { content: "Qty"; }
+  .orders-cost-table td:nth-child(5)::before { content: "Status"; }
+  .orders-cost-table td:nth-child(6)::before { content: "Due Date"; }
+  .orders-cost-table td:nth-child(7)::before { content: "Priority"; }
+  .orders-cost-table td:nth-child(8)::before { content: "Materials"; }
+  .orders-cost-table td:nth-child(9)::before { content: "Jobs"; }
+  .orders-cost-table td:nth-child(10)::before { content: "Total"; }
+  .orders-cost-table td:nth-child(11)::before { content: "Actions"; }
+
+  /* SHORTAGES */
+  .shortage-table-card .orders-table td:nth-child(1)::before { content: "Item"; }
+  .shortage-table-card .orders-table td:nth-child(2)::before { content: "Unit"; }
+  .shortage-table-card .orders-table td:nth-child(3)::before { content: "Required"; }
+  .shortage-table-card .orders-table td:nth-child(4)::before { content: "Missing"; }
+  .shortage-table-card .orders-table td:nth-child(5)::before { content: "Status"; }
+  .shortage-table-card .orders-table td:nth-child(6)::before { content: "Action"; }
+
+  /* TRANSFERS - destination totals table */
+  .dashboard-table-card .orders-table td:nth-child(1):has(+ td + td)::before,
+  .dashboard-table-card .orders-table td:first-child::before {
+    content: "";
+  }
+
+  /* destinations totals table: 3 cols */
+  .dashboard-table-card .orders-table tr td:nth-child(1):last-child {
+    /* no-op safety */
+  }
+
+  /* target specific transfer tables by surrounding context */
+  .dashboard-table-card .orders-table {
+    min-width: 0 !important;
+  }
+
+  /* destination totals */
+  .dashboard-table-card .orders-table tbody tr td:nth-child(1):nth-last-child(3)::before { content: "Name"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(2):nth-last-child(2)::before { content: "Code"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(3):nth-last-child(1)::before { content: "Total Qty"; }
+
+  /* destination stock */
+  .dashboard-table-card .orders-table tbody tr td:nth-child(1):nth-last-child(4)::before { content: "Destination"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(2):nth-last-child(3)::before { content: "Product"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(3):nth-last-child(2)::before { content: "Qty"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(4):nth-last-child(1)::before { content: "Unit"; }
+
+  /* transfer history */
+  .dashboard-table-card .orders-table tbody tr td:nth-child(1):nth-last-child(8)::before { content: "Date"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(2):nth-last-child(7)::before { content: "Product"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(3):nth-last-child(6)::before { content: "Destination"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(4):nth-last-child(5)::before { content: "Qty"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(5):nth-last-child(4)::before { content: "Unit"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(6):nth-last-child(3)::before { content: "Created By"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(7):nth-last-child(2)::before { content: "Notes"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(8):nth-last-child(1)::before { content: "Actions"; }
+
+  /* transfer history without actions */
+  .dashboard-table-card .orders-table tbody tr td:nth-child(1):nth-last-child(7)::before { content: "Date"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(2):nth-last-child(6)::before { content: "Product"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(3):nth-last-child(5)::before { content: "Destination"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(4):nth-last-child(4)::before { content: "Qty"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(5):nth-last-child(3)::before { content: "Unit"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(6):nth-last-child(2)::before { content: "Created By"; }
+  .dashboard-table-card .orders-table tbody tr td:nth-child(7):nth-last-child(1)::before { content: "Notes"; }
+
+  .product-cell,
+  .product-sub {
+    min-width: 0 !important;
+  }
+
+  .product-cell strong,
+  .product-sub,
+  .group-badge,
+  .status-badge,
+  .priority-pill,
+  .stock-badge {
+    word-break: break-word !important;
+  }
+
+  .products-table .actions-cell,
+  .orders-cost-table .actions-cell,
+  .shortage-table-card .actions-cell,
+  .dashboard-table-card .actions-cell,
+  .product-actions-cell {
+    display: block !important;
+  }
+
+  .products-table .product-actions-cell,
+  .orders-cost-table .table-actions-inline,
+  .shortage-table-card .actions-cell,
+  .dashboard-table-card .actions-cell {
+    width: 100% !important;
+  }
+
+  .products-table .product-actions-cell,
+  .orders-cost-table .table-actions-inline {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .products-table .table-action-btn,
+  .orders-cost-table .table-action-btn,
+  .shortage-table-card .table-action-btn,
+  .dashboard-table-card .table-action-btn {
+    width: 100% !important;
+    justify-content: center !important;
+    text-align: center !important;
+  }
+
+  .products-table .inline-form,
+  .orders-cost-table .inline-form,
+  .shortage-table-card .inline-form,
+  .dashboard-table-card .inline-form {
+    display: flex !important;
+    width: 100% !important;
+  }
+
+  .products-table .inline-form button,
+  .orders-cost-table .inline-form button,
+  .shortage-table-card .inline-form button,
+  .dashboard-table-card .inline-form button {
+    width: 100% !important;
+  }
+
+  .group-filter-pills {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .group-filter-pill {
+    max-width: 100% !important;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .filters-wrapper .dashboard-form-card,
+  .dashboard-form-card,
+  .dashboard-table-card {
+    border-radius: 20px !important;
+  }
+
+  .dashboard-form-card .form-grid,
+  .dashboard-form-card .form-grid-2,
+  .dashboard-form-card .form-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .custom-select,
+  .custom-select-trigger,
+  .custom-options {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .products-table tr,
+  .orders-cost-table tr,
+  .shortage-table-card .orders-table tr,
+  .dashboard-table-card .orders-table tr {
+    padding: 12px !important;
+    border-radius: 16px !important;
+  }
+
+  .products-table td,
+  .orders-cost-table td,
+  .shortage-table-card .orders-table td,
+  .dashboard-table-card .orders-table td {
+    grid-template-columns: 92px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 7px 0 !important;
+    font-size: 0.92rem !important;
+  }
+
+  .products-table td::before,
+  .orders-cost-table td::before,
+  .shortage-table-card .orders-table td::before,
+  .dashboard-table-card .orders-table td::before {
+    font-size: 0.66rem !important;
+  }
+
+  .products-table .product-actions-cell,
+  .orders-cost-table .table-actions-inline {
+    gap: 7px !important;
+  }
+}
+
+/* ========================================
+   TRANSFERS MOBILE FORM FIX
+   put at very end of legacy.css
+======================================== */
+
+@media (max-width: 1024px) {
+  .form-grid.form-grid-2.section-spacing {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing > .dashboard-form-card {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboard-stats.section-spacing {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing > .dashboard-form-card {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .order-form,
+  .form-grid.form-grid-2.section-spacing .form-grid,
+  .form-grid.form-grid-2.section-spacing .form-grid-2 {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    min-width: 0 !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .form-group,
+  .form-grid.form-grid-2.section-spacing .form-group-full {
+    grid-column: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing input,
+  .form-grid.form-grid-2.section-spacing textarea,
+  .form-grid.form-grid-2.section-spacing .custom-select,
+  .form-grid.form-grid-2.section-spacing .custom-select-trigger {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .custom-options {
+    max-width: 100% !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .form-actions {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: stretch !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .form-actions .dashboard-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .table-wrapper {
+    margin-top: 14px !important;
+    overflow-x: visible !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table thead {
+    display: none !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table,
+  .form-grid.form-grid-2.section-spacing .orders-table tbody,
+  .form-grid.form-grid-2.section-spacing .orders-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table tr {
+    margin-bottom: 12px !important;
+    padding: 12px !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(148, 163, 184, 0.12) !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table td {
+    display: grid !important;
+    grid-template-columns: 80px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    padding: 6px 0 !important;
+    border: 0 !important;
+    width: 100% !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table td::before {
+    content: "";
+    font-size: 0.66rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: rgba(184, 194, 220, 0.76) !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table td:nth-child(1)::before { content: "Name"; }
+  .form-grid.form-grid-2.section-spacing .orders-table td:nth-child(2)::before { content: "Code"; }
+  .form-grid.form-grid-2.section-spacing .orders-table td:nth-child(3)::before { content: "Notes"; }
+}
+
+@media (max-width: 560px) {
+  .form-grid.form-grid-2.section-spacing > .dashboard-form-card {
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table td {
+    grid-template-columns: 72px minmax(0, 1fr) !important;
+    font-size: 0.9rem !important;
+  }
+
+  .form-grid.form-grid-2.section-spacing .orders-table td::before {
+    font-size: 0.62rem !important;
+  }
+}

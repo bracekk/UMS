@@ -492,6 +492,42 @@ def ensure_database_ready():
     bootstrap_database("database.db")
 
 
+def ensure_workstation_groups_and_batch_delete_schema():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS workstation_groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            color TEXT NOT NULL DEFAULT '#6366f1',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(company_id, name),
+            FOREIGN KEY (company_id) REFERENCES companies(id)
+        )
+    """)
+
+    alter_statements = [
+        "ALTER TABLE workstations ADD COLUMN group_id INTEGER",
+        "ALTER TABLE order_batches ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE workstations ADD COLUMN cost_per_hour REAL NOT NULL DEFAULT 0",
+    ]
+
+    for sql in alter_statements:
+        try:
+            cursor.execute(sql)
+        except sqlite3.OperationalError:
+            pass
+
+    conn.commit()
+    conn.close()
+
+
+ensure_workstation_groups_and_batch_delete_schema()
+
+
 ensure_database_ready()
 
 def seed_data():
@@ -2018,6 +2054,7 @@ def fetch_batch_with_stats(cursor, batch_id, company_id):
          AND bo.company_id = b.company_id
         WHERE b.id = ?
           AND b.company_id = ?
+          AND COALESCE(b.is_deleted, 0) = 0
         GROUP BY b.id, b.batch_number, b.name, b.status, b.notes, b.created_at, b.launched_at
     """, (batch_id, company_id))
     row = cursor.fetchone()
@@ -2743,6 +2780,194 @@ def get_product_material_breakdown(cursor, product_id, company_id=None):
 
 def calculate_product_material_cost(cursor, product_id, company_id=None):
     return sum(row["total_cost"] for row in get_product_material_breakdown(cursor, product_id, company_id=company_id))
+
+
+def fetch_workstation_groups(cursor, company_id):
+    cursor.execute("""
+        SELECT
+            id,
+            name,
+            COALESCE(description, ''),
+            COALESCE(color, '#6366f1')
+        FROM workstation_groups
+        WHERE company_id = ?
+        ORDER BY name ASC
+    """, (company_id,))
+    return [
+        {
+            "id": row[0],
+            "name": row[1],
+            "description": row[2],
+            "color": row[3],
+        }
+        for row in cursor.fetchall()
+    ]
+
+
+def get_workstation_group_current_used_load(cursor, group_key, company_id):
+    if group_key.startswith("g:"):
+        group_id = int(group_key.split(":", 1)[1])
+        cursor.execute("""
+            SELECT COALESCE(SUM(
+                oj.estimated_hours *
+                CASE
+                    WHEN (oj.planned_quantity - oj.completed_quantity) < 0 THEN 0
+                    ELSE (oj.planned_quantity - oj.completed_quantity)
+                END
+            ), 0)
+            FROM order_jobs oj
+            JOIN workstations w
+              ON w.id = oj.workstation_id
+             AND w.company_id = oj.company_id
+            WHERE w.group_id = ?
+              AND oj.company_id = ?
+              AND oj.status != 'Done'
+              AND (
+                    oj.status = 'Waiting'
+                    OR oj.status = 'Ongoing'
+                    OR oj.status = 'Paused'
+                    OR oj.status = 'Delayed'
+              )
+              AND (
+                    oj.is_split_child = 1
+                    OR NOT EXISTS (
+                        SELECT 1
+                        FROM order_jobs child
+                        WHERE child.parent_job_id = oj.id
+                          AND child.is_split_child = 1
+                          AND child.company_id = oj.company_id
+                    )
+              )
+        """, (group_id, company_id))
+        row = cursor.fetchone()
+        return float((row[0] if row else 0) or 0)
+
+    workstation_id = int(group_key.split(":", 1)[1])
+    return get_workstation_current_used_load(cursor, workstation_id, company_id)
+
+
+def get_batch_planned_workstation_group_load(cursor, batch_id, company_id=None, selected_group_keys=None):
+    if company_id is None:
+        raise ValueError("company_id is required.")
+
+    selected = {str(value).strip() for value in (selected_group_keys or []) if str(value).strip()}
+
+    cursor.execute("""
+        SELECT
+            CASE
+                WHEN wg.id IS NOT NULL THEN 'g:' || wg.id
+                ELSE 'w:' || w.id
+            END AS load_key,
+            CASE
+                WHEN wg.id IS NOT NULL THEN wg.name
+                ELSE 'Ungrouped — ' || w.name
+            END AS group_name,
+            CASE
+                WHEN wg.id IS NOT NULL THEN COALESCE(wg.color, w.color, '#6366f1')
+                ELSE COALESCE(w.color, '#3b82f6')
+            END AS group_color,
+            CASE
+                WHEN wg.id IS NOT NULL THEN wg.id
+                ELSE NULL
+            END AS workstation_group_id,
+            COALESCE(SUM(COALESCE(pjt.estimated_hours, 0) * COALESCE(bo.quantity, 0)), 0) AS planned_batch_hours,
+            COUNT(DISTINCT bo.id) AS batch_order_count,
+            COUNT(DISTINCT pjt.id) AS job_template_count
+        FROM batch_orders bo
+        JOIN product_job_templates pjt
+          ON pjt.product_id = bo.product_id
+         AND pjt.company_id = bo.company_id
+        JOIN workstations w
+          ON w.id = pjt.workstation_id
+         AND w.company_id = pjt.company_id
+        LEFT JOIN workstation_groups wg
+          ON wg.id = w.group_id
+         AND wg.company_id = w.company_id
+        WHERE bo.batch_id = ?
+          AND bo.company_id = ?
+        GROUP BY
+            CASE
+                WHEN wg.id IS NOT NULL THEN 'g:' || wg.id
+                ELSE 'w:' || w.id
+            END,
+            CASE
+                WHEN wg.id IS NOT NULL THEN wg.name
+                ELSE 'Ungrouped — ' || w.name
+            END,
+            CASE
+                WHEN wg.id IS NOT NULL THEN COALESCE(wg.color, w.color, '#6366f1')
+                ELSE COALESCE(w.color, '#3b82f6')
+            END,
+            CASE
+                WHEN wg.id IS NOT NULL THEN wg.id
+                ELSE NULL
+            END
+        ORDER BY group_name ASC
+    """, (batch_id, company_id))
+
+    rows = []
+    all_rows = cursor.fetchall()
+
+    for row in all_rows:
+        group_key = row[0]
+        if selected and group_key not in selected:
+            continue
+
+        if group_key.startswith("g:"):
+            group_id = int(group_key.split(":", 1)[1])
+
+            cursor.execute("""
+                SELECT
+                    COALESCE(SUM(
+                        COALESCE(w.hours_per_shift, 0) *
+                        COALESCE(w.shifts_per_day, 0) *
+                        COALESCE(w.working_days_per_month, 0)
+                    ), 0),
+                    COUNT(*)
+                FROM workstations w
+                WHERE w.group_id = ?
+                  AND w.company_id = ?
+            """, (group_id, company_id))
+            capacity_row = cursor.fetchone()
+            monthly_capacity = float((capacity_row[0] if capacity_row else 0) or 0)
+            workstation_count = int((capacity_row[1] if capacity_row else 0) or 0)
+        else:
+            workstation_id = int(group_key.split(":", 1)[1])
+            cursor.execute("""
+                SELECT
+                    (
+                        COALESCE(hours_per_shift, 0) *
+                        COALESCE(shifts_per_day, 0) *
+                        COALESCE(working_days_per_month, 0)
+                    )
+                FROM workstations
+                WHERE id = ?
+                  AND company_id = ?
+            """, (workstation_id, company_id))
+            capacity_row = cursor.fetchone()
+            monthly_capacity = float((capacity_row[0] if capacity_row else 0) or 0)
+            workstation_count = 1
+
+        current_used = get_workstation_group_current_used_load(cursor, group_key, company_id)
+        planned_batch_hours = float(row[4] or 0)
+        preview_total = current_used + planned_batch_hours
+
+        rows.append({
+            "group_key": group_key,
+            "workstation_group_id": row[3],
+            "name": row[1],
+            "color": row[2] or "#6366f1",
+            "monthly_capacity": monthly_capacity,
+            "current_used": current_used,
+            "planned_batch_hours": planned_batch_hours,
+            "preview_total": preview_total,
+            "preview_percent": (preview_total / monthly_capacity * 100) if monthly_capacity > 0 else 0,
+            "batch_order_count": int(row[5] or 0),
+            "job_template_count": int(row[6] or 0),
+            "workstation_count": workstation_count,
+        })
+
+    return rows
 
 
 def get_product_job_cost_breakdown(cursor, product_id, company_id=None):
@@ -3641,6 +3866,7 @@ def order_batches():
           ON bo.batch_id = b.id
          AND bo.company_id = b.company_id
         WHERE b.company_id = ?
+          AND COALESCE(b.is_deleted, 0) = 0
         GROUP BY b.id, b.batch_number, b.name, b.status, b.notes, b.created_at, b.launched_at
         ORDER BY b.id DESC
     """, (company_id,))
@@ -3649,7 +3875,7 @@ def order_batches():
     batches = []
     for row in rows:
         cost_snapshot = get_batch_cost_snapshot(cursor, row[0], company_id=company_id)
-        load_preview = get_batch_planned_workstation_load(cursor, row[0], company_id=company_id)
+        load_preview = get_batch_planned_workstation_group_load(cursor, row[0], company_id=company_id)
         batches.append({
             "id": row[0],
             "batch_number": row[1] or f"BAT-{row[0]:05d}",
@@ -3663,7 +3889,7 @@ def order_batches():
             "materials_cost": cost_snapshot["materials_cost"],
             "jobs_cost": cost_snapshot["jobs_cost"],
             "total_cost": cost_snapshot["total_cost"],
-            "planned_workstations": len(load_preview),
+            "planned_groups": len(load_preview),
             "planned_hours": sum(item["planned_batch_hours"] for item in load_preview),
         })
 
@@ -3747,17 +3973,26 @@ def delete_order_batch(batch_id):
         flash("Batch not found.", "error")
         return redirect(url_for("order_batches"))
 
-    if batch["status"] != "draft":
+    if batch["status"] == "draft":
+        cursor.execute("DELETE FROM batch_orders WHERE batch_id = ? AND company_id = ?", (batch_id, company_id))
+        cursor.execute("DELETE FROM order_batches WHERE id = ? AND company_id = ?", (batch_id, company_id))
+        conn.commit()
         conn.close()
-        flash("Only draft batches can be deleted.", "error")
-        return redirect(url_for("view_order_batch", batch_id=batch_id))
 
-    cursor.execute("DELETE FROM batch_orders WHERE batch_id = ? AND company_id = ?", (batch_id, company_id))
-    cursor.execute("DELETE FROM order_batches WHERE id = ? AND company_id = ?", (batch_id, company_id))
+        flash("Draft batch deleted.", "success")
+        return redirect(url_for("order_batches"))
+
+    cursor.execute("""
+        UPDATE order_batches
+        SET is_deleted = 1
+        WHERE id = ?
+          AND company_id = ?
+    """, (batch_id, company_id))
+
     conn.commit()
     conn.close()
 
-    flash("Batch deleted.", "success")
+    flash("Launched batch removed from active planning list. Real launched orders/jobs were kept.", "success")
     return redirect(url_for("order_batches"))
 
 
@@ -3768,7 +4003,7 @@ def view_order_batch(batch_id):
         return redirect(url_for("login"))
 
     company_id = get_company_id()
-    selected_workstation_ids = request.args.getlist("preview_workstation")
+    selected_group_keys = request.args.getlist("preview_group")
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
@@ -3826,12 +4061,12 @@ def view_order_batch(batch_id):
         })
 
     materials = get_batch_material_requirements(cursor, batch_id, company_id)
-    cost_snapshot = get_batch_cost_snapshot(cursor, batch_id, company_id=company_id)
-    planned_workstations = get_batch_planned_workstation_load(
+    batch_cost = get_batch_cost_snapshot(cursor, batch_id, company_id=company_id)
+    planned_groups = get_batch_planned_workstation_group_load(
         cursor,
         batch_id,
         company_id=company_id,
-        selected_workstation_ids=selected_workstation_ids,
+        selected_group_keys=selected_group_keys,
     )
 
     cursor.execute("""
@@ -3853,7 +4088,15 @@ def view_order_batch(batch_id):
     product_groups = fetch_product_groups(cursor, company_id)
 
     cursor.execute("""
-        SELECT DISTINCT w.id, w.name
+        SELECT DISTINCT
+            CASE
+                WHEN wg.id IS NOT NULL THEN 'g:' || wg.id
+                ELSE 'w:' || w.id
+            END AS group_key,
+            CASE
+                WHEN wg.id IS NOT NULL THEN wg.name
+                ELSE 'Ungrouped — ' || w.name
+            END AS group_name
         FROM workstations w
         JOIN product_job_templates pjt
           ON pjt.workstation_id = w.id
@@ -3861,12 +4104,15 @@ def view_order_batch(batch_id):
         JOIN batch_orders bo
           ON bo.product_id = pjt.product_id
          AND bo.company_id = pjt.company_id
+        LEFT JOIN workstation_groups wg
+          ON wg.id = w.group_id
+         AND wg.company_id = w.company_id
         WHERE bo.batch_id = ?
           AND bo.company_id = ?
-        ORDER BY w.name ASC
+        ORDER BY group_name ASC
     """, (batch_id, company_id))
-    involved_workstations = [
-        {"id": row[0], "name": row[1]}
+    involved_groups = [
+        {"group_key": row[0], "name": row[1]}
         for row in cursor.fetchall()
     ]
 
@@ -3880,10 +4126,10 @@ def view_order_batch(batch_id):
         products=products,
         product_groups=product_groups,
         selected_group_id=request.args.get("group_id", "").strip(),
-        batch_cost=cost_snapshot,
-        planned_workstations=planned_workstations,
-        involved_workstations=involved_workstations,
-        selected_workstation_ids=[str(value) for value in selected_workstation_ids],
+        batch_cost=batch_cost,
+        planned_groups=planned_groups,
+        involved_groups=involved_groups,
+        selected_group_keys=[str(value) for value in selected_group_keys],
         active_page="orders"
     )
 
@@ -5612,6 +5858,8 @@ def new_workstation():
         return redirect(url_for("login"))
 
     company_id = get_company_id()
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
 
     if request.method == "POST":
         name = request.form["name"].strip()
@@ -5621,9 +5869,29 @@ def new_workstation():
         working_days_per_month = int(request.form["working_days_per_month"] or 20)
         cost_per_hour = float(request.form.get("cost_per_hour", 0) or 0)
         color = request.form.get("color", "#3b82f6").strip() or "#3b82f6"
+        group_id_raw = request.form.get("group_id", "").strip()
 
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
+        group_id = None
+        if group_id_raw:
+            try:
+                group_id = int(group_id_raw)
+            except ValueError:
+                conn.close()
+                flash("Invalid workstation group selected.", "error")
+                return redirect(url_for("new_workstation"))
+
+            cursor.execute("""
+                SELECT id
+                FROM workstation_groups
+                WHERE id = ?
+                  AND company_id = ?
+            """, (group_id, company_id))
+            group_exists = cursor.fetchone()
+
+            if group_exists is None:
+                conn.close()
+                flash("Selected workstation group was not found.", "error")
+                return redirect(url_for("new_workstation"))
 
         cursor.execute("""
             INSERT INTO workstations (
@@ -5632,19 +5900,21 @@ def new_workstation():
                 hours_per_shift,
                 shifts_per_day,
                 working_days_per_month,
-                cost_per_hour,
                 color,
+                cost_per_hour,
+                group_id,
                 company_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             name,
             description,
             hours_per_shift,
             shifts_per_day,
             working_days_per_month,
-            cost_per_hour,
             color,
+            cost_per_hour,
+            group_id,
             company_id
         ))
 
@@ -5654,8 +5924,12 @@ def new_workstation():
         flash("Workstation created successfully.", "success")
         return redirect(url_for("workstations"))
 
+    workstation_groups = fetch_workstation_groups(cursor, company_id)
+    conn.close()
+
     return render_template(
         "new_workstation.html",
+        workstation_groups=workstation_groups,
         active_page="workstations"
     )
 
@@ -5679,7 +5953,8 @@ def edit_workstation(workstation_id):
             shifts_per_day,
             working_days_per_month,
             color,
-            COALESCE(cost_per_hour, 0)
+            COALESCE(cost_per_hour, 0),
+            group_id
         FROM workstations
         WHERE id = ? AND company_id = ?
     """, (workstation_id, company_id))
@@ -5697,11 +5972,40 @@ def edit_workstation(workstation_id):
         working_days_per_month = int(request.form["working_days_per_month"] or 20)
         cost_per_hour = float(request.form.get("cost_per_hour", 0) or 0)
         color = request.form.get("color", "#3b82f6").strip() or "#3b82f6"
+        group_id_raw = request.form.get("group_id", "").strip()
+
+        group_id = None
+        if group_id_raw:
+            try:
+                group_id = int(group_id_raw)
+            except ValueError:
+                conn.close()
+                flash("Invalid workstation group selected.", "error")
+                return redirect(url_for("edit_workstation", workstation_id=workstation_id))
+
+            cursor.execute("""
+                SELECT id
+                FROM workstation_groups
+                WHERE id = ?
+                  AND company_id = ?
+            """, (group_id, company_id))
+            group_exists = cursor.fetchone()
+
+            if group_exists is None:
+                conn.close()
+                flash("Selected workstation group was not found.", "error")
+                return redirect(url_for("edit_workstation", workstation_id=workstation_id))
 
         cursor.execute("""
             UPDATE workstations
-            SET name = ?, description = ?, hours_per_shift = ?, shifts_per_day = ?,
-                working_days_per_month = ?, cost_per_hour = ?, color = ?
+            SET name = ?,
+                description = ?,
+                hours_per_shift = ?,
+                shifts_per_day = ?,
+                working_days_per_month = ?,
+                color = ?,
+                cost_per_hour = ?,
+                group_id = ?
             WHERE id = ? AND company_id = ?
         """, (
             name,
@@ -5709,8 +6013,9 @@ def edit_workstation(workstation_id):
             hours_per_shift,
             shifts_per_day,
             working_days_per_month,
-            cost_per_hour,
             color,
+            cost_per_hour,
+            group_id,
             workstation_id,
             company_id
         ))
@@ -5729,10 +6034,19 @@ def edit_workstation(workstation_id):
         "shifts_per_day": row[4],
         "working_days_per_month": row[5],
         "color": row[6],
-        "cost_per_hour": row[7],
+        "cost_per_hour": float(row[7] or 0),
+        "group_id": row[8],
     }
+
+    workstation_groups = fetch_workstation_groups(cursor, company_id)
     conn.close()
-    return render_template("edit_workstation.html", workstation=workstation, active_page="workstations")
+
+    return render_template(
+        "edit_workstation.html",
+        workstation=workstation,
+        workstation_groups=workstation_groups,
+        active_page="workstations"
+    )
 
 
 @app.route("/workstations/delete/<int:workstation_id>", methods=["POST"])
@@ -7333,6 +7647,8 @@ def planner_split_job(job_id):
         conn.close()
 
 
+
+
 @app.route("/workstations")
 @permission_required("view_workstations")
 def workstations():
@@ -7340,6 +7656,7 @@ def workstations():
         return redirect(url_for("login"))
 
     company_id = get_company_id()
+
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
@@ -7382,12 +7699,19 @@ def workstations():
                               AND child.company_id = oj.company_id
                         )
                   )
-            ), 0) AS used_load
+            ), 0) AS used_load,
+            COALESCE(wg.name, ''),
+            COALESCE(wg.color, '')
         FROM workstations w
+        LEFT JOIN workstation_groups wg
+          ON wg.id = w.group_id
+         AND wg.company_id = w.company_id
         WHERE w.company_id = ?
-        ORDER BY w.name ASC
+        ORDER BY COALESCE(wg.name, 'ZZZ'), w.name ASC
     """, (company_id,))
     rows = cursor.fetchall()
+
+    workstation_groups = fetch_workstation_groups(cursor, company_id)
     conn.close()
 
     workstations = []
@@ -7407,14 +7731,106 @@ def workstations():
             "monthly_capacity": monthly_capacity,
             "cost_per_hour": float(row[8] or 0),
             "used_load": used_load,
-            "free_load": free_load
+            "free_load": free_load,
+            "group_name": row[10] or "No group",
+            "group_color": row[11] or "#6366f1",
         })
 
     return render_template(
         "workstations.html",
         workstations=workstations,
+        workstation_groups=workstation_groups,
         active_page="workstations"
     )
+
+
+@app.route("/workstation-groups/new", methods=["POST"])
+@permission_required("view_workstations")
+def create_workstation_group():
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = get_company_id()
+    name = request.form.get("name", "").strip()
+    description = request.form.get("description", "").strip()
+    color = request.form.get("color", "#6366f1").strip() or "#6366f1"
+
+    if not name:
+        flash("Workstation group name is required.", "error")
+        return redirect(url_for("workstations"))
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id
+        FROM workstation_groups
+        WHERE company_id = ?
+          AND LOWER(name) = LOWER(?)
+        LIMIT 1
+    """, (company_id, name))
+    existing = cursor.fetchone()
+
+    if existing:
+        conn.close()
+        flash("Workstation group with this name already exists.", "error")
+        return redirect(url_for("workstations"))
+
+    cursor.execute("""
+        INSERT INTO workstation_groups (
+            company_id,
+            name,
+            description,
+            color
+        )
+        VALUES (?, ?, ?, ?)
+    """, (
+        company_id,
+        name,
+        description or None,
+        color
+    ))
+
+    conn.commit()
+    conn.close()
+
+    flash("Workstation group created successfully.", "success")
+    return redirect(url_for("workstations"))
+
+
+@app.route("/workstation-groups/delete/<int:group_id>", methods=["POST"])
+def delete_workstation_group(group_id):
+    if not is_logged_in():
+        return redirect(url_for("login"))
+
+    company_id = get_company_id()
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM workstations
+        WHERE group_id = ?
+          AND company_id = ?
+    """, (group_id, company_id))
+    linked_count = int(cursor.fetchone()[0] or 0)
+
+    if linked_count > 0:
+        conn.close()
+        flash("Cannot delete this workstation group while workstations are still assigned to it.", "error")
+        return redirect(url_for("workstations"))
+
+    cursor.execute("""
+        DELETE FROM workstation_groups
+        WHERE id = ?
+          AND company_id = ?
+    """, (group_id, company_id))
+
+    conn.commit()
+    conn.close()
+
+    flash("Workstation group deleted.", "success")
+    return redirect(url_for("workstations"))
 
 
 @app.route("/users")
