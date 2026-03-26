@@ -6722,7 +6722,6 @@ def product_transfers():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    # Products for form/filter
     cursor.execute("""
         SELECT
             id,
@@ -6736,7 +6735,6 @@ def product_transfers():
     """, (company_id,))
     product_rows = cursor.fetchall()
 
-    # Destinations for form/filter
     cursor.execute("""
         SELECT
             id,
@@ -6750,7 +6748,6 @@ def product_transfers():
     """, (company_id,))
     destination_rows = cursor.fetchall()
 
-    # Filters for transfer history
     where_parts = ["t.company_id = ?"]
     params = [company_id]
 
@@ -6772,7 +6769,6 @@ def product_transfers():
 
     where_sql = " AND ".join(where_parts)
 
-    # Filtered transfer history
     cursor.execute(f"""
         SELECT
             t.id,
@@ -6796,20 +6792,18 @@ def product_transfers():
           ON u.id = t.created_by
         WHERE {where_sql}
         ORDER BY t.transfer_date DESC, t.id DESC
-    """, params)
+    """, tuple(params))
     transfer_rows = cursor.fetchall()
 
-    # Filtered stats
     cursor.execute(f"""
         SELECT
             COUNT(*) AS transfer_count,
-            COALESCE(SUM(quantity), 0) AS total_quantity
+            COALESCE(SUM(t.quantity), 0) AS total_quantity
         FROM product_transfers_out t
         WHERE {where_sql}
-    """, params)
+    """, tuple(params))
     stats_row = cursor.fetchone()
 
-    # Destination stock summary (derived from all active transfer history)
     destination_stock_where = ["t.company_id = ?"]
     destination_stock_params = [company_id]
 
@@ -6832,7 +6826,7 @@ def product_transfers():
             p.product_code,
             p.product_name,
             COALESCE(p.measurement_unit, 'pcs') AS measurement_unit,
-            ROUND(COALESCE(SUM(t.quantity), 0), 2) AS qty_at_destination
+            ROUND(COALESCE(SUM(t.quantity), 0)::numeric, 2) AS qty_at_destination
         FROM product_transfers_out t
         JOIN stock_destinations d
           ON d.id = t.destination_id
@@ -6846,16 +6840,15 @@ def product_transfers():
             p.id, p.product_code, p.product_name, p.measurement_unit
         HAVING COALESCE(SUM(t.quantity), 0) > 0
         ORDER BY d.name ASC, p.product_name ASC, p.product_code ASC
-    """, destination_stock_params)
+    """, tuple(destination_stock_params))
     destination_stock_rows = cursor.fetchall()
 
-    # Destination totals
     cursor.execute("""
         SELECT
             d.id AS destination_id,
             d.name AS destination_name,
             d.destination_code,
-            ROUND(COALESCE(SUM(t.quantity), 0), 2) AS total_qty
+            ROUND(COALESCE(SUM(t.quantity), 0)::numeric, 2) AS total_qty
         FROM stock_destinations d
         LEFT JOIN product_transfers_out t
           ON t.destination_id = d.id
@@ -8607,6 +8600,7 @@ def purchase_requests():
     show_history = request.args.get("show_history", "0") == "1"
 
     conn = get_connection()
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     active_sql = """
@@ -8654,6 +8648,7 @@ def purchase_requests():
     active_params = [company_id]
 
     if search:
+        like_value = f"%{search.lower()}%"
         active_sql += """
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
@@ -8664,14 +8659,13 @@ def purchase_requests():
              OR LOWER(COALESCE(o.order_number, '')) LIKE ?
           )
         """
-        like_value = f"%{search.lower()}%"
         active_params.extend([
             like_value,
             like_value,
             like_value,
             like_value,
             like_value,
-            like_value
+            like_value,
         ])
 
     if status_filter in ("draft", "submitted", "approved", "ordered"):
@@ -8691,7 +8685,7 @@ def purchase_requests():
 
     active_sql += " ORDER BY pr.created_at DESC, pr.id DESC"
     cursor.execute(active_sql, tuple(active_params))
-    requests = cursor.fetchall()
+    requests = [dict(row) for row in cursor.fetchall()]
 
     archive_sql = """
         SELECT
@@ -8738,6 +8732,7 @@ def purchase_requests():
     archive_params = [company_id]
 
     if history_search:
+        history_like_value = f"%{history_search.lower()}%"
         archive_sql += """
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
@@ -8748,14 +8743,13 @@ def purchase_requests():
              OR LOWER(COALESCE(o.order_number, '')) LIKE ?
           )
         """
-        history_like_value = f"%{history_search.lower()}%"
         archive_params.extend([
             history_like_value,
             history_like_value,
             history_like_value,
             history_like_value,
             history_like_value,
-            history_like_value
+            history_like_value,
         ])
 
     if history_status_filter in ("received", "cancelled", "rejected"):
@@ -8775,7 +8769,7 @@ def purchase_requests():
 
     archive_sql += " ORDER BY COALESCE(pr.updated_at, pr.created_at) DESC, pr.id DESC"
     cursor.execute(archive_sql, tuple(archive_params))
-    archived_requests = cursor.fetchall()
+    archived_requests = [dict(row) for row in cursor.fetchall()]
 
     cursor.execute("""
         SELECT id, name
@@ -8783,7 +8777,7 @@ def purchase_requests():
         WHERE company_id = ?
         ORDER BY name ASC
     """, (company_id,))
-    supplier_options = cursor.fetchall()
+    supplier_options = [dict(row) for row in cursor.fetchall()]
 
     conn.close()
 
@@ -8801,7 +8795,7 @@ def purchase_requests():
         history_priority_filter=history_priority_filter,
         history_supplier_filter=history_supplier_filter,
         show_history=show_history,
-        active_page="purchase_requests"
+        active_page="purchase_requests",
     )
 
 
