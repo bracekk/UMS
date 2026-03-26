@@ -3461,6 +3461,10 @@ def inject_permissions():
     }
 
 
+@app.route("/health", methods=["GET", "HEAD"])
+def health():
+    return "ok", 200
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -10464,6 +10468,10 @@ def add_product_stock(product_id):
 
     flash("Product stock added.", "success")
     return redirect(request.referrer or url_for("inventory"))
+
+@app.route("/health")
+def health():
+    return "ok", 200
 
 
 if __name__ == "__main__":
