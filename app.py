@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
-import sqlite3
+from ums_core import db_compat as sqlite3
 from datetime import datetime, timedelta
 import calendar
 import math

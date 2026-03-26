@@ -1,4 +1,4 @@
-import sqlite3
+from ums_core import db_compat as sqlite3
 from pathlib import Path
 
 
