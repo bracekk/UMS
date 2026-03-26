@@ -33,17 +33,28 @@ app.secret_key = os.environ.get("SECRET_KEY", "dev-key-change-me")
 load_dotenv()
 
 
+
 DB_PATH = os.environ.get("DATABASE_PATH", "database.db")
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute("PRAGMA busy_timeout = 10000;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
     return conn
 
+def initialize_sqlite():
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.execute("PRAGMA synchronous=NORMAL;")
+    cursor.execute("PRAGMA foreign_keys = ON;")
+    conn.commit()
+    conn.close()
+
+
+initialize_sqlite()
 
 
 def ensure_render_safe_schema():
@@ -7981,46 +7992,60 @@ def new_user():
         conn = get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
-        existing = cursor.fetchone()
+        try:
+            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+            existing = cursor.fetchone()
 
-        if existing:
-            conn.close()
-            flash("Email already exists.", "error")
+            if existing:
+                flash("Email already exists.", "error")
+                return redirect(url_for("new_user"))
+
+            hashed_password = generate_password_hash(password)
+
+            cursor.execute("""
+                INSERT INTO users (full_name, company, email, password, company_id, role, is_active)
+                VALUES (?, ?, ?, ?, ?, ?, 1)
+            """, (
+                full_name,
+                session.get("company_name", ""),
+                email,
+                hashed_password,
+                company_id,
+                role
+            ))
+
+            user_id = cursor.lastrowid
+
+            for permission_key in ALL_PERMISSION_KEYS:
+                form_value = request.form.get(f"perm_{permission_key}")
+                default_has = permission_key in get_role_default_permissions(role)
+                selected_has = bool(form_value)
+
+                if selected_has != default_has:
+                    cursor.execute("""
+                        INSERT INTO user_permissions (user_id, permission_key, allowed)
+                        VALUES (?, ?, ?)
+                    """, (
+                        user_id,
+                        permission_key,
+                        1 if selected_has else 0
+                    ))
+
+            conn.commit()
+            flash("User created successfully.", "success")
+            return redirect(url_for("users"))
+
+        except sqlite3.OperationalError as e:
+            conn.rollback()
+            flash(f"Database error: {e}", "error")
             return redirect(url_for("new_user"))
 
-        hashed_password = generate_password_hash(password)
+        except Exception:
+            conn.rollback()
+            raise
 
-        cursor.execute("""
-            INSERT INTO users (full_name, company, email, password, company_id, role, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
-        """, (
-            full_name,
-            session.get("company_name", ""),
-            email,
-            hashed_password,
-            company_id,
-            role
-        ))
-
-        user_id = cursor.lastrowid
-
-        for permission_key in ALL_PERMISSION_KEYS:
-            form_value = request.form.get(f"perm_{permission_key}")
-            default_has = permission_key in get_role_default_permissions(role)
-            selected_has = bool(form_value)
-
-            if selected_has != default_has:
-                cursor.execute("""
-                    INSERT INTO user_permissions (user_id, permission_key, allowed)
-                    VALUES (?, ?, ?)
-                """, (user_id, permission_key, 1 if selected_has else 0))
-
-        conn.commit()
-        conn.close()
-
-        flash("User created successfully.", "success")
-        return redirect(url_for("users"))
+        finally:
+            conn.close()
 
     return render_template(
         "new_user.html",
