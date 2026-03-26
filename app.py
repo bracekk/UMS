@@ -3210,7 +3210,7 @@ def login():
         cursor.execute("""
             SELECT id, full_name, email, password, company_id, role
             FROM users
-            WHERE email = ?
+            WHERE email = %s
         """, (email,))
         user = cursor.fetchone()
         conn.close()
@@ -3255,7 +3255,7 @@ def register():
 
         try:
             cursor.execute("""
-                SELECT id FROM users WHERE email = ?
+                SELECT id FROM users WHERE email = %s
             """, (email,))
             existing_user = cursor.fetchone()
 
@@ -3271,7 +3271,7 @@ def register():
             company_id = cursor.lastrowid
 
             cursor.execute("""
-                INSERT INTO users (full_name, company, email, password, company_id, role)
+                INSERT INTO users (full_name, email, password, company_id, role)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (full_name, company_name, email, hashed_password, company_id, "admin"))
 
