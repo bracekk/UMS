@@ -41,12 +41,13 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys = ON;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
     return conn
 
 
 
 def ensure_render_safe_schema():
-    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -58,6 +59,18 @@ def ensure_render_safe_schema():
             color TEXT NOT NULL DEFAULT '#6366f1',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(company_id, name)
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS product_groups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(company_id, name),
+            FOREIGN KEY (company_id) REFERENCES companies(id)
         )
     """)
 
@@ -116,6 +129,18 @@ def init_db():
         used_at TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS product_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(company_id, name),
+        FOREIGN KEY (company_id) REFERENCES companies(id)
     )
     """)
 
@@ -437,6 +462,7 @@ def init_db():
         "ALTER TABLE items ADD COLUMN available_quantity REAL NOT NULL DEFAULT 0",
         "ALTER TABLE items ADD COLUMN company_id INTEGER",
         "ALTER TABLE items ADD COLUMN supplier_id INTEGER",
+        "ALTER TABLE products ADD COLUMN group_id INTEGER",
 
         "ALTER TABLE products ADD COLUMN measurement_unit TEXT NOT NULL DEFAULT 'pcs'",
         "ALTER TABLE products ADD COLUMN stock_quantity REAL NOT NULL DEFAULT 0",
@@ -542,7 +568,7 @@ def init_db():
 
 def ensure_database_ready():
     init_db()
-    bootstrap_database("database.db")
+    bootstrap_database(DB_PATH)
 
 
 def ensure_workstation_groups_and_batch_delete_schema():
@@ -610,9 +636,12 @@ def seed_data():
     conn.close()
 
 
-init_db()
-bootstrap_database("database.db")
+def ensure_database_ready():
+    init_db()
+    bootstrap_database(DB_PATH)
 
+ensure_workstation_groups_and_batch_delete_schema()
+ensure_database_ready()
 
 def is_logged_in():
     return "user_id" in session
