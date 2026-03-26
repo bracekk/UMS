@@ -150,12 +150,12 @@ else:
                         CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END AS notnull,
                         column_default AS dflt_value,
                         CASE
-                            WHEN column_name = 'id' AND column_default LIKE 'nextval(%' THEN 1
+                            WHEN column_name = 'id' AND column_default LIKE 'nextval(%%' THEN 1
                             ELSE 0
                         END AS pk
                     FROM information_schema.columns
                     WHERE table_schema = 'public'
-                      AND table_name = %s
+                    AND table_name = %s
                     ORDER BY ordinal_position
                     """,
                     (table_name,),
@@ -164,7 +164,10 @@ else:
                     (cid, name, _convert_type_name(data_type), notnull, dflt_value, pk)
                     for cid, name, data_type, notnull, dflt_value, pk in self._cursor.fetchall()
                 ]
-                self._set_manual_results(["cid", "name", "type", "notnull", "dflt_value", "pk"], rows)
+                self._set_manual_results(
+                    ["cid", "name", "type", "notnull", "dflt_value", "pk"],
+                    rows,
+                )
                 return self
 
             if lowered.startswith("pragma "):
@@ -178,7 +181,7 @@ else:
                     SELECT table_name AS name
                     FROM information_schema.tables
                     WHERE table_schema = 'public'
-                      AND table_name = %s
+                    AND table_name = %s
                     """,
                     (table_name,),
                 )
@@ -190,12 +193,19 @@ else:
             self._cursor.execute(translated_sql, params)
             self.description = self._cursor.description
 
-            insert_match = re.match(r"\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)", sql, flags=re.IGNORECASE)
+            insert_match = re.match(
+                r"\s*INSERT\s+INTO\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+                sql,
+                flags=re.IGNORECASE,
+            )
             if insert_match:
                 table_name = insert_match.group(1)
                 helper = self.connection._raw.cursor()
                 try:
-                    helper.execute("SELECT currval(pg_get_serial_sequence(%s, 'id'))", (table_name,))
+                    helper.execute(
+                        "SELECT currval(pg_get_serial_sequence(%s, 'id'))",
+                        (table_name,),
+                    )
                     row = helper.fetchone()
                     self.lastrowid = row[0] if row else None
                 except Exception:

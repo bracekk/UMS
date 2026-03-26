@@ -55,8 +55,18 @@ def _table_exists(cursor, table_name):
 
 
 def _column_exists(cursor, table_name, column_name):
-    cursor.execute(f"PRAGMA table_info({table_name})")
-    return any(row[1] == column_name or row["name"] == column_name for row in cursor.fetchall())
+    cursor.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = %s
+          AND column_name = %s
+        LIMIT 1
+        """,
+        (table_name, column_name),
+    )
+    return cursor.fetchone() is not None
 
 
 def _safe_add_column(cursor, table_name, column_sql):
