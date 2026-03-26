@@ -127,6 +127,7 @@ def init_db():
         password TEXT,
         company_id INTEGER,
         role TEXT NOT NULL DEFAULT 'admin',
+        is_active INTEGER NOT NULL DEFAULT 1,
         FOREIGN KEY (company_id) REFERENCES companies(id)
     )
     """)
@@ -502,6 +503,7 @@ def init_db():
         "ALTER TABLE purchase_requests ADD COLUMN source_type TEXT DEFAULT 'manual'",
         "ALTER TABLE purchase_requests ADD COLUMN source_batch_id INTEGER",
         "ALTER TABLE purchase_requests ADD COLUMN source_batch_order_id INTEGER",
+        "ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1",
     ]
 
     for sql in alter_statements:
