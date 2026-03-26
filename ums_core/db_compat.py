@@ -87,18 +87,15 @@ else:
         translated = re.sub(r"\bIFNULL\s*\(", "COALESCE(", translated, flags=re.IGNORECASE)
 
         if re.match(r"\s*CREATE\s+TABLE", translated, flags=re.IGNORECASE):
-            translated = re.sub(
-                r",\s*FOREIGN\s+KEY\s*\([^\)]*\)\s*REFERENCES\s+[^,\)]*(?:\([^\)]*\))?",
-                "",
-                translated,
-                flags=re.IGNORECASE | re.DOTALL,
-            )
-            translated = re.sub(
-                r"FOREIGN\s+KEY\s*\([^\)]*\)\s*REFERENCES\s+[^,\)]*(?:\([^\)]*\))?,?",
-                "",
-                translated,
-                flags=re.IGNORECASE | re.DOTALL,
-            )
+            # Remove SQLite-style FOREIGN KEY constraint lines without corrupting
+            # nearby UNIQUE(...) clauses or leaving dangling parentheses.
+            lines = translated.splitlines()
+            cleaned = []
+            for line in lines:
+                if re.search(r"\bFOREIGN\s+KEY\b", line, flags=re.IGNORECASE):
+                    continue
+                cleaned.append(line)
+            translated = "\n".join(cleaned)
             translated = re.sub(r",\s*\)", "\n)", translated, flags=re.DOTALL)
 
         translated = translated.replace("?", "%s")
@@ -146,7 +143,7 @@ else:
                         CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END AS notnull,
                         column_default AS dflt_value,
                         CASE
-                            WHEN column_name = 'id' AND column_default LIKE 'nextval(%' THEN 1
+                            WHEN column_name = 'id' AND column_default LIKE 'nextval(%%' THEN 1
                             ELSE 0
                         END AS pk
                     FROM information_schema.columns
