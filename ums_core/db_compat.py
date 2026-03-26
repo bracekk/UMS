@@ -94,6 +94,9 @@ else:
         translated = translated.replace("AUTOINCREMENT", "")
         translated = re.sub(r"IFNULL\s*\(", "COALESCE(", translated, flags=re.IGNORECASE)
         translated = translated.replace("?", "%s")
+        # psycopg treats '%' as the beginning of a placeholder in query text.
+        # Escape literal percent signs while preserving valid placeholders and existing %%.
+        translated = re.sub(r"(?<!%)%(?![%sbt])", "%%", translated)
         return translated
 
     class CursorWrapper:
