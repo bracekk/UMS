@@ -3564,52 +3564,64 @@ def landing():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form["email"].strip()
-        password = request.form["password"]
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not email or not password:
+            flash("Email and password are required.", "error")
+            return redirect(url_for("login"))
 
         conn = get_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT id, full_name, email, password, company_id, role
             FROM users
-            WHERE email = ?
-        """, (email,))
+            WHERE email = %s
+            """,
+            (email,),
+        )
         user = cursor.fetchone()
         conn.close()
 
-        if user and check_password_hash(user[3], password):
-            if not user[4]:
-                flash("This account is not linked to a company.", "error")
-                return render_template("login.html", error="This account is not linked to a company.")
+        if not user:
+            flash("Invalid email or password.", "error")
+            return redirect(url_for("login"))
 
-            session["user_id"] = user[0]
-            session["user_name"] = user[1]
-            session["user_email"] = user[2]
-            session["company_id"] = user[4]
-            session["user_role"] = user[5] or "user"
+        user_id, full_name, user_email, hashed_password, company_id, role = user
 
-            return redirect(url_for("dashboard"))
+        if not check_password_hash(hashed_password, password):
+            flash("Invalid email or password.", "error")
+            return redirect(url_for("login"))
 
-        flash("Invalid email or password", "error")
-        return render_template("login.html", error="Invalid email or password")
+        # session
+        session["user_id"] = user_id
+        session["user_name"] = full_name
+        session["user_email"] = user_email
+        session["company_id"] = company_id
+        session["role"] = role
+
+        return redirect(url_for("dashboard"))
 
     return render_template("login.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        full_name = request.form["full_name"].strip()
-        company_name = request.form["company"].strip()
-        email = request.form["email"].strip()
-        password = request.form["password"]
-        confirm_password = request.form["confirm_password"]
+        full_name = request.form.get("full_name", "").strip()
+        company_name = request.form.get("company_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
 
         if not full_name or not company_name or not email or not password:
-            return render_template("register.html", error="All fields are required")
+            flash("All fields are required.", "error")
+            return redirect(url_for("register"))
 
         if password != confirm_password:
-            return render_template("register.html", error="Passwords do not match")
+            flash("Passwords do not match.", "error")
+            return redirect(url_for("register"))
 
         hashed_password = generate_password_hash(password)
 
@@ -3617,38 +3629,38 @@ def register():
         cursor = conn.cursor()
 
         try:
-            cursor.execute("""
-                SELECT id FROM users WHERE email = ?
-            """, (email,))
-            existing_user = cursor.fetchone()
+            # 1. sukuriam company
+            cursor.execute(
+                """
+                INSERT INTO companies (company_name)
+                VALUES (%s)
+                RETURNING id
+                """,
+                (company_name,),
+            )
+            company_id = cursor.fetchone()[0]
 
-            if existing_user:
-                conn.close()
-                flash("Email already exists.", "error")
-                return render_template("register.html", error="Email already exists")
-
-            cursor.execute("""
-                INSERT INTO companies (name)
-                VALUES (?)
-            """, (company_name,))
-            company_id = cursor.lastrowid
-
-            cursor.execute("""
+            # 2. sukuriam user (BE company_name čia!)
+            cursor.execute(
+                """
                 INSERT INTO users (full_name, email, password, company_id, role)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (full_name, company_name, email, hashed_password, company_id, "admin"))
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (full_name, email, hashed_password, company_id, "admin"),
+            )
 
             conn.commit()
-            conn.close()
 
-            flash("Account created successfully. You can now log in.", "success")
-            return redirect(url_for("login"))
-
-        except sqlite3.IntegrityError:
+        except Exception as e:
             conn.rollback()
+            flash(f"Error: {str(e)}", "error")
+            return redirect(url_for("register"))
+
+        finally:
             conn.close()
-            flash("Company or email already exists.", "error")
-            return render_template("register.html", error="Company or email already exists")
+
+        flash("Account created successfully. Please login.", "success")
+        return redirect(url_for("login"))
 
     return render_template("register.html")
 
@@ -3739,7 +3751,7 @@ def dashboard():
             w.id,
             w.name,
             (w.hours_per_shift * w.shifts_per_day * w.working_days_per_month) AS monthly_capacity,
-            IFNULL((
+            COALESCE((
                 SELECT SUM(
                     oj.estimated_hours *
                     CASE
@@ -7875,7 +7887,7 @@ def workstations():
             w.color,
             (w.hours_per_shift * w.shifts_per_day * w.working_days_per_month) AS monthly_capacity,
             COALESCE(w.cost_per_hour, 0),
-            IFNULL((
+            COALESCE((
                 SELECT SUM(
                     oj.estimated_hours *
                     CASE
