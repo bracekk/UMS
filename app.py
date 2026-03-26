@@ -8611,16 +8611,12 @@ def purchase_requests():
             pr.created_at,
             pr.updated_at,
             s.name AS supplier_name,
-            u.full_name AS requester_name,
             i.item_name,
             o.order_number
         FROM purchase_requests pr
         LEFT JOIN suppliers s
           ON pr.supplier_id = s.id
          AND s.company_id = pr.company_id
-        LEFT JOIN users u
-          ON pr.created_by = u.id   -- 🔥 FIX
-         AND u.company_id = pr.company_id
         LEFT JOIN items i
           ON pr.item_id = i.id
          AND i.company_id = pr.company_id
@@ -8633,6 +8629,7 @@ def purchase_requests():
     params = [company_id]
 
     if search:
+        like = f"%{search.lower()}%"
         sql += """
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
@@ -8642,7 +8639,6 @@ def purchase_requests():
              OR LOWER(COALESCE(i.item_name, '')) LIKE ?
           )
         """
-        like = f"%{search.lower()}%"
         params.extend([like, like, like, like, like])
 
     if status_filter:
