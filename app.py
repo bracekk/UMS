@@ -460,6 +460,7 @@ def init_db():
     alter_statements = [
         "ALTER TABLE users ADD COLUMN company_id INTEGER",
         "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'admin'",
+        "ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1",
 
         "ALTER TABLE orders ADD COLUMN product_id INTEGER",
         "ALTER TABLE orders ADD COLUMN quantity REAL DEFAULT 1",
@@ -503,7 +504,6 @@ def init_db():
         "ALTER TABLE purchase_requests ADD COLUMN source_type TEXT DEFAULT 'manual'",
         "ALTER TABLE purchase_requests ADD COLUMN source_batch_id INTEGER",
         "ALTER TABLE purchase_requests ADD COLUMN source_batch_order_id INTEGER",
-        "ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1",
     ]
 
     for sql in alter_statements:
@@ -579,9 +579,29 @@ def init_db():
     conn.close()
 
 
+def ensure_users_is_active_schema():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [row[1] for row in cursor.fetchall()]
+
+    if "is_active" not in columns:
+        cursor.execute("""
+            ALTER TABLE users
+            ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
+        """)
+
+    conn.commit()
+    conn.close()
+
+
 def ensure_database_ready():
     init_db()
     bootstrap_database(DB_PATH)
+
+
+ensure_users_is_active_schema()
 
 
 def ensure_workstation_groups_and_batch_delete_schema():
@@ -7973,12 +7993,13 @@ def new_user():
     company_id = get_company_id()
 
     if request.method == "POST":
-        full_name = request.form["full_name"].strip()
-        email = request.form["email"].strip().lower()
-        password = request.form["password"]
-        confirm_password = request.form["confirm_password"]
+        full_name = request.form.get("full_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
         role = request.form.get("role", "worker").strip().lower()
 
+        # basic validation
         if not full_name or not email or not password:
             flash("All fields are required.", "error")
             return redirect(url_for("new_user"))
@@ -7995,66 +8016,64 @@ def new_user():
         cursor = conn.cursor()
 
         try:
-            cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
-            existing = cursor.fetchone()
+            # 🔍 check duplicate email in same company
+            cursor.execute("""
+                SELECT id FROM users
+                WHERE email = ? AND company_id = ?
+            """, (email, company_id))
 
-            if existing:
-                flash("Email already exists.", "error")
+            if cursor.fetchone():
+                flash("User with this email already exists.", "error")
                 return redirect(url_for("new_user"))
 
+            # 🔐 hash password
             hashed_password = generate_password_hash(password)
 
-            cursor.execute("""
-                INSERT INTO users (full_name, company, email, password, company_id, role, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, 1)
-            """, (
-                full_name,
-                session.get("company_name", ""),
-                email,
-                hashed_password,
-                company_id,
-                role
-            ))
+            # 🏢 get company name safely
+            cursor.execute("SELECT name FROM companies WHERE id = ?", (company_id,))
+            company_row = cursor.fetchone()
+            company_name = company_row[0] if company_row else ""
 
-            user_id = cursor.lastrowid
+            # 🔍 check if is_active column exists
+            cursor.execute("PRAGMA table_info(users)")
+            columns = [row[1] for row in cursor.fetchall()]
 
-            for permission_key in ALL_PERMISSION_KEYS:
-                form_value = request.form.get(f"perm_{permission_key}")
-                default_has = permission_key in get_role_default_permissions(role)
-                selected_has = bool(form_value)
-
-                if selected_has != default_has:
-                    cursor.execute("""
-                        INSERT INTO user_permissions (user_id, permission_key, allowed)
-                        VALUES (?, ?, ?)
-                    """, (
-                        user_id,
-                        permission_key,
-                        1 if selected_has else 0
-                    ))
+            if "is_active" in columns:
+                cursor.execute("""
+                    INSERT INTO users (full_name, company, email, password, company_id, role, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)
+                """, (full_name, company_name, email, hashed_password, company_id, role))
+            else:
+                # fallback jei DB sena
+                cursor.execute("""
+                    INSERT INTO users (full_name, company, email, password, company_id, role)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (full_name, company_name, email, hashed_password, company_id, role))
 
             conn.commit()
+
             flash("User created successfully.", "success")
-            return redirect(url_for("users"))
+            return redirect(url_for("account"))
+
+        except sqlite3.IntegrityError as e:
+            conn.rollback()
+            flash(f"Integrity error: {str(e)}", "error")
+            return redirect(url_for("new_user"))
 
         except sqlite3.OperationalError as e:
             conn.rollback()
-            flash(f"Database error: {e}", "error")
+            flash(f"Database error: {str(e)}", "error")
             return redirect(url_for("new_user"))
 
-        except Exception:
+        except Exception as e:
             conn.rollback()
-            raise
+            flash(f"Unexpected error: {str(e)}", "error")
+            return redirect(url_for("new_user"))
 
         finally:
             conn.close()
 
-    return render_template(
-        "new_user.html",
-        permission_keys=ALL_PERMISSION_KEYS,
-        role_defaults=ROLE_DEFAULT_PERMISSIONS,
-        active_page="users"
-    )
+    return render_template("new_user.html")
 
 
 @app.route("/users/<int:user_id>/role", methods=["POST"])
