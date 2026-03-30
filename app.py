@@ -3649,7 +3649,7 @@ def register():
 
             cursor.execute(
                 """
-                INSERT INTO companies (company_name)
+                INSERT INTO companies (name)
                 VALUES (%s)
                 RETURNING id
                 """,
