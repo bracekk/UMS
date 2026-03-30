@@ -47,6 +47,19 @@ def get_connection():
 
 
 def _table_exists(cursor, table_name):
+    if getattr(sqlite3, "USE_POSTGRES", False):
+        cursor.execute(
+            """
+            SELECT 1
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = %s
+            LIMIT 1
+            """,
+            (table_name,),
+        )
+        return cursor.fetchone() is not None
+
     cursor.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
         (table_name,),
@@ -55,18 +68,23 @@ def _table_exists(cursor, table_name):
 
 
 def _column_exists(cursor, table_name, column_name):
-    cursor.execute(
-        """
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = %s
-          AND column_name = %s
-        LIMIT 1
-        """,
-        (table_name, column_name),
-    )
-    return cursor.fetchone() is not None
+    if getattr(sqlite3, "USE_POSTGRES", False):
+        cursor.execute(
+            """
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = %s
+              AND column_name = %s
+            LIMIT 1
+            """,
+            (table_name, column_name),
+        )
+        return cursor.fetchone() is not None
+
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    columns = cursor.fetchall()
+    return any(col[1] == column_name for col in columns)
 
 
 def _safe_add_column(cursor, table_name, column_sql):
@@ -1744,7 +1762,7 @@ def fetch_shortage_export_rows(company_id):
             i.measurement_unit,
             COALESCE(i.stock_quantity, 0),
             COALESCE(i.min_stock, 0),
-            MAX(0, COALESCE(i.min_stock, 0) - COALESCE(i.stock_quantity, 0)),
+            GREATEST(0, COALESCE(i.min_stock, 0) - COALESCE(i.stock_quantity, 0)),
             COALESCE(s.name, '')
         FROM items i
         LEFT JOIN suppliers s
@@ -7615,7 +7633,7 @@ def planner():
 
         progress_percent = 0
         if planned_quantity > 0:
-            progress_percent = min(100,  (completed_quantity / planned_quantity) * 100))
+            progress_percent = min(100,  (completed_quantity / planned_quantity) * 100)
 
         job = {
             "id": row[0],
