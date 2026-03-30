@@ -3456,26 +3456,69 @@ def get_user_permission_overrides(user_id):
         conn.close()
 
 
-def get_effective_permissions(user_id=None, role=None):
-    if user_id is None:
-        user_id = session.get("user_id")
-    if role is None:
-        role = get_current_user_role()
+def get_effective_permissions(user_id, company_id=None):
+    role = (session.get("role") or "").strip().lower()
 
-    permissions = set(get_role_default_permissions(role))
-    overrides = get_user_permission_overrides(user_id)
+    base_permissions = ROLE_DEFAULT_PERMISSIONS.get(role, {}).copy()
 
-    for permission_key, allowed in overrides.items():
-        if allowed:
-            permissions.add(permission_key)
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    try:
+        if company_id is not None:
+            cursor.execute(
+                """
+                SELECT permission_name, allowed
+                FROM user_permissions
+                WHERE user_id = %s
+                  AND (company_id = %s OR company_id IS NULL)
+                """,
+                (user_id, company_id),
+            )
         else:
-            permissions.discard(permission_key)
+            cursor.execute(
+                """
+                SELECT permission_name, allowed
+                FROM user_permissions
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
 
-    return permissions
+        rows = cursor.fetchall()
+
+        for row in rows:
+            if isinstance(row, dict):
+                permission_name = row.get("permission_name")
+                allowed = row.get("allowed")
+            else:
+                permission_name = row[0]
+                allowed = row[1]
+
+            if permission_name:
+                base_permissions[permission_name] = bool(allowed)
+
+    except Exception:
+        # jei lentelė tuščia / bloga / dar ne pilnai suderinta, bent defaultai veiks
+        pass
+    finally:
+        conn.close()
+
+    return base_permissions
 
 
-def has_permission(permission_key, user_id=None, role=None):
-    return permission_key in get_effective_permissions(user_id=user_id, role=role)
+def has_permission(permission_name):
+    if not session.get("user_id"):
+        return False
+
+    role = (session.get("role") or "").strip().lower()
+
+    # ADMIN BYPASS
+    if role == "admin":
+        return True
+
+    permissions = get_effective_permissions(session["user_id"], session.get("company_id"))
+    return bool(permissions.get(permission_name, False))
 
 
 def get_dashboard_layout(cursor, user_id, company_id, page_key="dashboard"):
@@ -8683,20 +8726,28 @@ def purchase_requests():
     )
 
 
-def permission_required(permission):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            # 🔥 ADMIN BYPASS
-            if session.get("role") == "admin":
-                return f(*args, **kwargs)
+from functools import wraps
+from flask import session, flash, redirect, url_for
 
-            if not has_permission(permission):
+def permission_required(permission_name):
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(*args, **kwargs):
+            if not session.get("user_id"):
+                flash("Please log in first.", "error")
+                return redirect(url_for("login"))
+
+            # ADMIN BYPASS
+            if (session.get("role") or "").strip().lower() == "admin":
+                return view_func(*args, **kwargs)
+
+            if not has_permission(permission_name):
                 flash("You do not have permission to access this page.", "error")
                 return redirect(url_for("dashboard"))
 
-            return f(*args, **kwargs)
-        return wrapper
+            return view_func(*args, **kwargs)
+
+        return wrapped_view
     return decorator
 
 
