@@ -90,8 +90,9 @@ def _column_exists(cursor, table_name, column_name):
 def _safe_add_column(cursor, table_name, column_sql):
     try:
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}")
-    except Exception:
-        pass
+        print(f"[schema] added column on {table_name}: {column_sql}")
+    except Exception as e:
+        print(f"[schema] failed adding column on {table_name}: {column_sql} -> {e}")
 
 
 def ensure_render_safe_schema():
