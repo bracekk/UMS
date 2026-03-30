@@ -3361,11 +3361,9 @@ ROLE_DEFAULT_PERMISSIONS = {
         "view_workstations", "manage_workstations",
         "view_reports", "export_data",
         "manage_users",
-        "manage_procurement",
-        "view_suppliers",
-        "manage_suppliers",
-        "view_procurement",
-        "manage_procurement",
+        "view_suppliers", "manage_suppliers",
+        "view_procurement", "manage_procurement",
+        "view_procurements", "manage_procurements",
     },
     "manager": {
         "view_dashboard",
@@ -3376,16 +3374,16 @@ ROLE_DEFAULT_PERMISSIONS = {
         "view_items", "manage_items",
         "view_workstations", "manage_workstations",
         "view_reports", "export_data",
-        "manage_procurement",
-        "view_suppliers",
-        "manage_suppliers",
-        "view_procurement",
+        "view_suppliers", "manage_suppliers",
+        "view_procurement", "manage_procurement",
+        "view_procurements", "manage_procurements",
     },
     "worker": {
         "view_dashboard",
         "view_jobs",
         "update_job_progress",
         "view_procurement",
+        "view_procurements",
     },
 }
 
@@ -3407,16 +3405,21 @@ ALL_PERMISSION_KEYS = [
     "view_reports",
     "export_data",
     "manage_users",
-    "manage_procurement",
     "view_suppliers",
     "manage_suppliers",
     "view_procurement",
     "manage_procurement",
+    "view_procurements",
+    "manage_procurements",
 ]
 
 
 def get_current_user_role():
-    return (session.get("user_role") or "worker").strip().lower()
+    return (
+        session.get("role")
+        or session.get("user_role")
+        or "worker"
+    ).strip().lower()
 
 
 def get_role_default_permissions(role):
@@ -3427,17 +3430,24 @@ def get_user_permission_overrides(user_id):
     if not user_id:
         return {}
 
-    company_id = get_company_id()
+    company_id = session.get("company_id")
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
-            SELECT permission_key, allowed
-            FROM user_permissions
-            WHERE user_id = ?
-              AND (company_id = ? OR company_id IS NULL)
-        """, (user_id, company_id))
+        if company_id:
+            cursor.execute("""
+                SELECT permission_key, allowed
+                FROM user_permissions
+                WHERE user_id = ?
+                  AND (company_id = ? OR company_id IS NULL)
+            """, (user_id, company_id))
+        else:
+            cursor.execute("""
+                SELECT permission_key, allowed
+                FROM user_permissions
+                WHERE user_id = ?
+            """, (user_id,))
 
         rows = cursor.fetchall()
         overrides = {}
@@ -3445,64 +3455,34 @@ def get_user_permission_overrides(user_id):
         for row in rows:
             permission_key = row[0]
             allowed = row[1]
-            overrides[permission_key] = bool(allowed)
+            if permission_key:
+                overrides[permission_key] = bool(allowed)
 
         return overrides
 
     except Exception:
-        # jei lentelės dar nėra arba query nulūžta, negriaunam viso home puslapio
         return {}
     finally:
         conn.close()
 
 
-def get_effective_permissions(user_id, company_id=None):
-    role = (session.get("role") or "").strip().lower()
+def get_effective_permissions(user_id=None, company_id=None):
+    user_id = user_id or session.get("user_id")
+    company_id = company_id or session.get("company_id")
+    role = get_current_user_role()
 
-    base_permissions = ROLE_DEFAULT_PERMISSIONS.get(role, {}).copy()
+    base_permissions = set(ROLE_DEFAULT_PERMISSIONS.get(role, set()))
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    if not user_id:
+        return base_permissions
 
-    try:
-        if company_id is not None:
-            cursor.execute(
-                """
-                SELECT permission_name, allowed
-                FROM user_permissions
-                WHERE user_id = %s
-                  AND (company_id = %s OR company_id IS NULL)
-                """,
-                (user_id, company_id),
-            )
+    overrides = get_user_permission_overrides(user_id)
+
+    for permission_key, allowed in overrides.items():
+        if allowed:
+            base_permissions.add(permission_key)
         else:
-            cursor.execute(
-                """
-                SELECT permission_name, allowed
-                FROM user_permissions
-                WHERE user_id = %s
-                """,
-                (user_id,),
-            )
-
-        rows = cursor.fetchall()
-
-        for row in rows:
-            if isinstance(row, dict):
-                permission_name = row.get("permission_name")
-                allowed = row.get("allowed")
-            else:
-                permission_name = row[0]
-                allowed = row[1]
-
-            if permission_name:
-                base_permissions[permission_name] = bool(allowed)
-
-    except Exception:
-        # jei lentelė tuščia / bloga / dar ne pilnai suderinta, bent defaultai veiks
-        pass
-    finally:
-        conn.close()
+            base_permissions.discard(permission_key)
 
     return base_permissions
 
@@ -3511,14 +3491,27 @@ def has_permission(permission_name):
     if not session.get("user_id"):
         return False
 
-    role = (session.get("role") or "").strip().lower()
+    role = get_current_user_role()
 
-    # ADMIN BYPASS
     if role == "admin":
         return True
 
-    permissions = get_effective_permissions(session["user_id"], session.get("company_id"))
-    return bool(permissions.get(permission_name, False))
+    alias_map = {
+        "view_procurements": "view_procurement",
+        "manage_procurements": "manage_procurement",
+    }
+
+    normalized_permission = alias_map.get(permission_name, permission_name)
+
+    permissions = get_effective_permissions(
+        session.get("user_id"),
+        session.get("company_id"),
+    )
+
+    return (
+        permission_name in permissions
+        or normalized_permission in permissions
+    )
 
 
 def get_dashboard_layout(cursor, user_id, company_id, page_key="dashboard"):
@@ -3579,12 +3572,15 @@ def inject_permissions():
             "all_permission_keys": ALL_PERMISSION_KEYS,
         }
 
-    effective_permissions = get_effective_permissions()
+    effective_permissions = get_effective_permissions(
+        session.get("user_id"),
+        session.get("company_id"),
+    )
 
     return {
         "current_user_role": get_current_user_role(),
         "effective_permissions": effective_permissions,
-        "has_permission_ui": lambda permission_key: permission_key in effective_permissions,
+        "has_permission_ui": lambda permission_key: has_permission(permission_key),
         "all_permission_keys": ALL_PERMISSION_KEYS,
     }
 
@@ -3621,7 +3617,7 @@ def login():
             """
             SELECT id, full_name, email, password, company_id, role
             FROM users
-            WHERE email = %s
+            WHERE email = ?
             """,
             (email,),
         )
@@ -3638,12 +3634,18 @@ def login():
             flash("Invalid email or password.", "error")
             return redirect(url_for("login"))
 
-        # session
+        if not company_id:
+            flash("This account is not linked to a company.", "error")
+            return redirect(url_for("login"))
+
+        normalized_role = (role or "worker").strip().lower()
+
         session["user_id"] = user_id
         session["user_name"] = full_name
         session["user_email"] = user_email
         session["company_id"] = company_id
-        session["role"] = role
+        session["role"] = normalized_role
+        session["user_role"] = normalized_role
 
         return redirect(url_for("dashboard"))
 
@@ -8638,7 +8640,7 @@ def edit_supplier(supplier_id):
 
 
 @app.route("/procurement/requests")
-@permission_required("view_procurements")
+@permission_required("view_procurement")
 def purchase_requests():
     if not is_logged_in():
         return redirect(url_for("login"))
