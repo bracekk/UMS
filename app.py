@@ -3610,18 +3610,21 @@ def login():
 def register():
     if request.method == "POST":
         full_name = request.form.get("full_name", "").strip()
-        company_name = request.form.get("company_name", "").strip()
+        company_name = (
+            request.form.get("company_name", "").strip()
+            or request.form.get("company", "").strip()
+        )
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password", "")
         confirm_password = request.form.get("confirm_password", "")
 
-        if not full_name or not company_name or not email or not password:
+        if not full_name or not company_name or not email or not password or not confirm_password:
             flash("All fields are required.", "error")
-            return redirect(url_for("register"))
+            return render_template("register.html")
 
         if password != confirm_password:
             flash("Passwords do not match.", "error")
-            return redirect(url_for("register"))
+            return render_template("register.html")
 
         hashed_password = generate_password_hash(password)
 
@@ -3629,7 +3632,21 @@ def register():
         cursor = conn.cursor()
 
         try:
-            # 1. sukuriam company
+            cursor.execute(
+                """
+                SELECT id
+                FROM users
+                WHERE email = %s
+                LIMIT 1
+                """,
+                (email,),
+            )
+            existing_user = cursor.fetchone()
+
+            if existing_user:
+                flash("Email already exists.", "error")
+                return render_template("register.html")
+
             cursor.execute(
                 """
                 INSERT INTO companies (company_name)
@@ -3640,7 +3657,6 @@ def register():
             )
             company_id = cursor.fetchone()[0]
 
-            # 2. sukuriam user (BE company_name čia!)
             cursor.execute(
                 """
                 INSERT INTO users (full_name, email, password, company_id, role)
@@ -3650,17 +3666,16 @@ def register():
             )
 
             conn.commit()
+            flash("Account created successfully. You can now log in.", "success")
+            return redirect(url_for("login"))
 
         except Exception as e:
             conn.rollback()
-            flash(f"Error: {str(e)}", "error")
-            return redirect(url_for("register"))
+            flash(f"Registration failed: {str(e)}", "error")
+            return render_template("register.html")
 
         finally:
             conn.close()
-
-        flash("Account created successfully. Please login.", "success")
-        return redirect(url_for("login"))
 
     return render_template("register.html")
 
@@ -8668,203 +8683,21 @@ def purchase_requests():
     )
 
 
-@app.route("/procurement/requests/new", methods=["GET", "POST"])
-@permission_required("manage_procurement")
-def new_purchase_request():
-    if not is_logged_in():
-        return redirect(url_for("login"))
+def permission_required(permission):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            # 🔥 ADMIN BYPASS
+            if session.get("role") == "admin":
+                return f(*args, **kwargs)
 
-    company_id = get_company_id()
-    user_id = session.get("user_id")
+            if not has_permission(permission):
+                flash("You do not have permission to access this page.", "error")
+                return redirect(url_for("dashboard"))
 
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    if request.method == "POST":
-        item_id_raw = request.form.get("item_id", "").strip()
-        title = request.form.get("title", "").strip()
-        description = request.form.get("description", "").strip()
-        quantity_raw = request.form.get("quantity", "").strip()
-        unit = request.form.get("unit", "").strip()
-        supplier_id_raw = request.form.get("supplier_id", "").strip()
-        priority = request.form.get("priority", "normal").strip().lower()
-        needed_by = request.form.get("needed_by", "").strip()
-        notes = request.form.get("notes", "").strip()
-
-        item_id = None
-        selected_item_name = None
-        selected_item_unit = None
-        selected_item_supplier_id = None
-
-        if item_id_raw:
-            try:
-                item_id = int(item_id_raw)
-            except ValueError:
-                conn.close()
-                flash("Invalid item selected.", "error")
-                return redirect(url_for("new_purchase_request"))
-
-            cursor.execute("""
-                SELECT id, item_name, measurement_unit, supplier_id
-                FROM items
-                WHERE id = ? AND company_id = ?
-            """, (item_id, company_id))
-            item_row = cursor.fetchone()
-
-            if item_row is None:
-                conn.close()
-                flash("Selected item was not found.", "error")
-                return redirect(url_for("new_purchase_request"))
-
-            selected_item_name = item_row[1]
-            selected_item_unit = item_row[2]
-            selected_item_supplier_id = item_row[3]
-
-        if not title:
-            title = selected_item_name or ""
-
-        if not title:
-            conn.close()
-            flash("Request title is required.", "error")
-            return redirect(url_for("new_purchase_request"))
-
-        if not quantity_raw:
-            conn.close()
-            flash("Quantity is required.", "error")
-            return redirect(url_for("new_purchase_request"))
-
-        try:
-            quantity = float(quantity_raw)
-        except ValueError:
-            conn.close()
-            flash("Quantity must be a valid number.", "error")
-            return redirect(url_for("new_purchase_request"))
-
-        if quantity <= 0:
-            conn.close()
-            flash("Quantity must be greater than zero.", "error")
-            return redirect(url_for("new_purchase_request"))
-
-        if not unit and selected_item_unit:
-            unit = selected_item_unit
-
-        if not unit:
-            conn.close()
-            flash("Unit is required.", "error")
-            return redirect(url_for("new_purchase_request"))
-
-        if priority not in ("low", "normal", "high"):
-            priority = "normal"
-
-        if not supplier_id_raw and selected_item_supplier_id:
-            supplier_id_raw = str(selected_item_supplier_id)
-
-        supplier_id = None
-        if supplier_id_raw:
-            try:
-                supplier_id = int(supplier_id_raw)
-            except ValueError:
-                conn.close()
-                flash("Invalid supplier selected.", "error")
-                return redirect(url_for("new_purchase_request"))
-
-            cursor.execute("""
-                SELECT id
-                FROM suppliers
-                WHERE id = ? AND company_id = ?
-            """, (supplier_id, company_id))
-            supplier_row = cursor.fetchone()
-
-            if supplier_row is None:
-                conn.close()
-                flash("Selected supplier was not found.", "error")
-                return redirect(url_for("new_purchase_request"))
-
-        cursor.execute("""
-            INSERT INTO purchase_requests (
-                company_id,
-                request_number,
-                item_id,
-                supplier_id,
-                title,
-                description,
-                quantity,
-                unit,
-                status,
-                priority,
-                needed_by,
-                requested_by,
-                approved_by,
-                ordered_by,
-                notes,
-                updated_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """, (
-            company_id,
-            None,
-            item_id,
-            supplier_id,
-            title,
-            description or None,
-            quantity,
-            unit,
-            "draft",
-            priority,
-            needed_by or None,
-            user_id,
-            None,
-            None,
-            notes or None
-        ))
-
-        new_request_id = cursor.lastrowid
-        request_number = f"PR-{new_request_id:05d}"
-
-        cursor.execute("""
-            UPDATE purchase_requests
-            SET request_number = ?
-            WHERE id = ? AND company_id = ?
-        """, (request_number, new_request_id, company_id))
-
-        conn.commit()
-        conn.close()
-
-        flash("Purchase request created successfully.", "success")
-        return redirect(url_for("purchase_requests"))
-
-    cursor.execute("""
-        SELECT id, name
-        FROM suppliers
-        WHERE company_id = ? AND is_active = 1
-        ORDER BY name ASC
-    """, (company_id,))
-    suppliers = cursor.fetchall()
-
-    cursor.execute("""
-        SELECT
-            i.id,
-            i.item_name,
-            i.measurement_unit,
-            i.supplier_id,
-            s.name
-        FROM items i
-        LEFT JOIN suppliers s
-          ON i.supplier_id = s.id
-         AND s.company_id = i.company_id
-        WHERE i.company_id = ?
-        ORDER BY i.item_name ASC
-    """, (company_id,))
-    items = cursor.fetchall()
-
-    conn.close()
-
-    return render_template(
-        "new_purchase_request.html",
-        suppliers=suppliers,
-        items=items,
-        active_page="purchase_requests"
-    )
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 @app.route("/procurement/requests/<int:request_id>/status/<status>")
