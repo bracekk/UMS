@@ -544,6 +544,15 @@ def init_db():
         ],
         "purchase_requests": [
             "request_number TEXT",
+            "title TEXT",
+            "description TEXT",
+            "status TEXT DEFAULT 'draft'",
+            "priority TEXT DEFAULT 'normal'",
+            "needed_by DATE",
+            "requested_by INTEGER",
+            "approved_by INTEGER",
+            "ordered_by INTEGER",
+            "notes TEXT",
             "source_type TEXT DEFAULT 'manual'",
             "source_batch_id INTEGER",
             "source_batch_order_id INTEGER",
@@ -1857,7 +1866,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
     sql = """
         SELECT
             COALESCE(pr.request_number, 'PR-' || pr.id),
-            COALESCE(pr.title, ''),
+            COALESCE(pr.title, COALESCE(i.item_name, '')),
             COALESCE(i.item_name, ''),
             COALESCE(s.name, ''),
             pr.quantity,
@@ -1894,12 +1903,13 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
              OR LOWER(COALESCE(pr.title, '')) LIKE ?
+             OR LOWER(COALESCE(pr.description, '')) LIKE ?
              OR LOWER(COALESCE(pr.notes, '')) LIKE ?
              OR LOWER(COALESCE(s.name, '')) LIKE ?
              OR LOWER(COALESCE(i.item_name, '')) LIKE ?
           )
         """
-        params.extend([like_value, like_value, like_value, like_value, like_value])
+        params.extend([like_value, like_value, like_value, like_value, like_value, like_value])
 
     valid_statuses = {"draft", "submitted", "approved", "ordered"} if not history else {"received", "cancelled", "rejected"}
     if status_filter in valid_statuses:
@@ -1918,6 +1928,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
             pass
 
     sql += " ORDER BY COALESCE(pr.updated_at, pr.created_at) DESC, pr.id DESC"
+
     cursor.execute(sql, params)
     rows = cursor.fetchall()
     conn.close()
@@ -8677,20 +8688,22 @@ def purchase_requests():
     sql = """
         SELECT
             pr.id,
-            pr.request_number,
+            COALESCE(pr.request_number, 'PR-' || pr.id) AS request_number,
             pr.item_id,
             pr.supplier_id,
-            pr.title,
+            COALESCE(pr.title, COALESCE(i.item_name, '')) AS title,
+            COALESCE(pr.description, '') AS description,
             pr.quantity,
-            pr.unit,
-            pr.status,
-            pr.priority,
+            COALESCE(pr.unit, '') AS unit,
+            COALESCE(pr.status, 'draft') AS status,
+            COALESCE(pr.priority, 'normal') AS priority,
             pr.created_at,
             pr.updated_at,
-            pr.notes,
-            s.name AS supplier_name,
-            i.item_name,
-            o.order_number
+            COALESCE(pr.notes, '') AS notes,
+            COALESCE(s.name, '') AS supplier_name,
+            COALESCE(i.item_name, '') AS item_name,
+            COALESCE(o.order_number, '') AS order_number,
+            COALESCE(u.full_name, '') AS requested_by_name
         FROM purchase_requests pr
         LEFT JOIN suppliers s
           ON pr.supplier_id = s.id
@@ -8701,6 +8714,9 @@ def purchase_requests():
         LEFT JOIN orders o
           ON pr.order_id = o.id
          AND o.company_id = pr.company_id
+        LEFT JOIN users u
+          ON pr.requested_by = u.id
+         AND u.company_id = pr.company_id
         WHERE pr.company_id = ?
     """
     params = [company_id]
@@ -8711,12 +8727,14 @@ def purchase_requests():
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
              OR LOWER(COALESCE(pr.title, '')) LIKE ?
+             OR LOWER(COALESCE(pr.description, '')) LIKE ?
              OR LOWER(COALESCE(pr.notes, '')) LIKE ?
              OR LOWER(COALESCE(s.name, '')) LIKE ?
              OR LOWER(COALESCE(i.item_name, '')) LIKE ?
+             OR LOWER(COALESCE(o.order_number, '')) LIKE ?
           )
         """
-        params.extend([like, like, like, like, like])
+        params.extend([like, like, like, like, like, like, like])
 
     if status_filter:
         sql += " AND LOWER(COALESCE(pr.status, 'draft')) = ?"
