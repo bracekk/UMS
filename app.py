@@ -1871,7 +1871,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
             COALESCE(i.item_name, ''),
             COALESCE(s.name, ''),
             pr.quantity,
-            COALESCE(pr.unit, ''),
+            COALESCE(i.unit, pr.unit, ''),
             COALESCE(pr.priority, 'normal'),
             COALESCE(pr.status, 'draft'),
             COALESCE(pr.needed_by, ''),
@@ -8373,7 +8373,7 @@ def account():
         "email": row[2],
         "role": row[3],
         "is_active": int(row[4] or 0),
-        "permissions": sorted(get_effective_permissions(user_id=row[0], role=row[3])),
+        "permissions": sorted(get_effective_permissions(user_id=row[0], company_id=company_id)),
     }
 
     permission_groups = {
@@ -8695,7 +8695,7 @@ def purchase_requests():
             COALESCE(pr.title, COALESCE(i.item_name, '')) AS title,
             COALESCE(pr.description, '') AS description,
             pr.quantity,
-            COALESCE(pr.unit, '') AS unit,
+            COALESCE(i.unit, pr.unit, '') AS unit,
             COALESCE(pr.status, 'draft') AS status,
             COALESCE(pr.priority, 'normal') AS priority,
             pr.created_at,
