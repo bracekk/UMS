@@ -2731,7 +2731,7 @@ def reserve_inventory_for_order(cursor, item_id, required_qty, company_id=None):
     reserved_quantity = float(item_row[1] or 0)
     available_before = stock_quantity - reserved_quantity
 
-    missing_qty = max(0, required_qty - max(0, available_before))
+    missing_qty =  required_qty -  available_before))
 
     cursor.execute("""
         UPDATE items
@@ -6478,7 +6478,7 @@ def jobs():
 
         progress_percent = 0
         if planned_quantity > 0:
-            progress_percent = min(100, max(0, (completed_quantity / planned_quantity) * 100))
+            progress_percent = min(100,  (completed_quantity / planned_quantity) * 100))
 
         jobs.append({
             "id": row[0],
@@ -7357,7 +7357,7 @@ def materials_shortage():
             "min_stock": min_stock,
             "supplier_id": row[6],
             "supplier_name": row[7],
-            "required_to_order": max(0, min_stock - stock_quantity)
+            "required_to_order":  min_stock - stock_quantity)
         })
 
     return render_template(
@@ -7615,7 +7615,7 @@ def planner():
 
         progress_percent = 0
         if planned_quantity > 0:
-            progress_percent = min(100, max(0, (completed_quantity / planned_quantity) * 100))
+            progress_percent = min(100,  (completed_quantity / planned_quantity) * 100))
 
         job = {
             "id": row[0],
@@ -8662,7 +8662,6 @@ def purchase_requests():
             pr.request_number,
             pr.item_id,
             pr.supplier_id,
-            pr.description,
             pr.quantity,
             pr.unit,
             pr.status,
