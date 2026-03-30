@@ -2700,7 +2700,7 @@ def release_order_reservations(cursor, order_id, company_id=None):
 
         cursor.execute("""
             UPDATE items
-            SET reserved_quantity = MAX(0, COALESCE(reserved_quantity, 0) - ?)
+            SET reserved_quantity = GREATEST(0, COALESCE(reserved_quantity, 0) - ?)
             WHERE id = ?
               AND company_id = ?
         """, (required_qty, current_item_id, company_id))
@@ -2731,7 +2731,7 @@ def reserve_inventory_for_order(cursor, item_id, required_qty, company_id=None):
     reserved_quantity = float(item_row[1] or 0)
     available_before = stock_quantity - reserved_quantity
 
-    missing_qty =  required_qty -  available_before))
+    missing_qty = max(0, required_qty - max(0, available_before))
 
     cursor.execute("""
         UPDATE items
