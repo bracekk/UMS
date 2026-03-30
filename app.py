@@ -1839,7 +1839,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
     sql = """
         SELECT
             COALESCE(pr.request_number, 'PR-' || pr.id),
-            pr.title,
+            COALESCE(pr.title, ''),
             COALESCE(i.item_name, ''),
             COALESCE(s.name, ''),
             pr.quantity,
@@ -1876,7 +1876,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
              OR LOWER(COALESCE(pr.title, '')) LIKE ?
-             OR LOWER(COALESCE(pr.description, '')) LIKE ?
+             OR LOWER(COALESCE(pr.notes, '')) LIKE ?
              OR LOWER(COALESCE(s.name, '')) LIKE ?
              OR LOWER(COALESCE(i.item_name, '')) LIKE ?
           )
@@ -6478,7 +6478,7 @@ def jobs():
 
         progress_percent = 0
         if planned_quantity > 0:
-            progress_percent = min(100,  (completed_quantity / planned_quantity) * 100))
+            progress_percent = min(100, max(0, (completed_quantity / planned_quantity) * 100))
 
         jobs.append({
             "id": row[0],
@@ -7357,7 +7357,7 @@ def materials_shortage():
             "min_stock": min_stock,
             "supplier_id": row[6],
             "supplier_name": row[7],
-            "required_to_order":  min_stock - stock_quantity)
+            "required_to_order": max(0, min_stock - stock_quantity),
         })
 
     return render_template(
@@ -8640,7 +8640,7 @@ def edit_supplier(supplier_id):
 
 
 @app.route("/procurement/requests")
-@permission_required("view_procurement")
+@permission_required("view_procurements")
 def purchase_requests():
     if not is_logged_in():
         return redirect(url_for("login"))
@@ -8662,12 +8662,14 @@ def purchase_requests():
             pr.request_number,
             pr.item_id,
             pr.supplier_id,
+            pr.title,
             pr.quantity,
             pr.unit,
             pr.status,
             pr.priority,
             pr.created_at,
             pr.updated_at,
+            pr.notes,
             s.name AS supplier_name,
             i.item_name,
             o.order_number
@@ -8683,7 +8685,6 @@ def purchase_requests():
          AND o.company_id = pr.company_id
         WHERE pr.company_id = ?
     """
-
     params = [company_id]
 
     if search:
@@ -8691,12 +8692,13 @@ def purchase_requests():
         sql += """
           AND (
                 LOWER(COALESCE(pr.request_number, '')) LIKE ?
-             OR LOWER(COALESCE(pr.description, '')) LIKE ?
+             OR LOWER(COALESCE(pr.title, '')) LIKE ?
+             OR LOWER(COALESCE(pr.notes, '')) LIKE ?
              OR LOWER(COALESCE(s.name, '')) LIKE ?
              OR LOWER(COALESCE(i.item_name, '')) LIKE ?
           )
         """
-        params.extend([like, like, like, like])
+        params.extend([like, like, like, like, like])
 
     if status_filter:
         sql += " AND LOWER(COALESCE(pr.status, 'draft')) = ?"
@@ -8713,7 +8715,7 @@ def purchase_requests():
         except ValueError:
             pass
 
-    sql += " ORDER BY pr.created_at DESC"
+    sql += " ORDER BY COALESCE(pr.updated_at, pr.created_at) DESC, pr.id DESC"
 
     cursor.execute(sql, tuple(params))
     rows = [dict(r) for r in cursor.fetchall()]
