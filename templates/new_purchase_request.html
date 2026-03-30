@@ -3,180 +3,104 @@
 {% block title %}UMS | New Purchase Request{% endblock %}
 
 {% block content %}
+
 <div class="jobs-header">
   <div class="jobs-header-left">
     <span class="eyebrow-label">Procurement</span>
-    <h1>New Purchase Request</h1>
-    <p>Create a new internal request for materials, supplier ordering or external purchasing.</p>
+    <h1>Create Purchase Request</h1>
+    <p>Manually create a new purchase request.</p>
   </div>
 
   <div class="jobs-header-right">
-    <a href="{{ url_for('purchase_requests') }}" class="dashboard-btn secondary">Back to Requests</a>
+    <a href="{{ url_for('purchase_requests') }}" class="dashboard-btn secondary">
+      Back to Requests
+    </a>
   </div>
 </div>
 
 <div class="dashboard-form-card section-spacing">
-  <div class="card-header">
-    <div>
-      <span class="card-kicker">Workflow</span>
-      <h4>Create Request</h4>
-    </div>
-  </div>
 
-  <form method="POST" class="order-form procurement-form procurement-request-clean-form">
-    <div class="form-grid procurement-request-grid">
-      <div class="form-group">
-        <label for="item_id">Inventory Item</label>
-        <div class="custom-select" data-select>
-          <input type="hidden" name="item_id" id="item_id" value="">
-          <button type="button" class="custom-select-trigger">
-            <span>Select item</span>
-          </button>
+  <form method="POST" class="form-grid">
 
-          <div class="custom-options">
-            <div class="custom-option" data-value="" data-supplier-id="" data-unit="">No linked item</div>
-            {% for item in items %}
-              <div
-                class="custom-option"
-                data-value="{{ item[0] }}"
-                data-supplier-id="{{ item[3] if item[3] else '' }}"
-                data-unit="{{ item[2] if item[2] else '' }}"
-              >
-                {{ item[1] }}{% if item[2] %} ({{ item[2] }}){% endif %}{% if item[4] %} · {{ item[4] }}{% endif %}
-              </div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="title">Request Title</label>
-        <input type="text" id="title" name="title">
-      </div>
-
-      <div class="form-group">
-        <label for="supplier_id">Supplier</label>
-        <div class="custom-select" data-select>
-          <input type="hidden" name="supplier_id" id="supplier_id" value="">
-          <button type="button" class="custom-select-trigger">
-            <span>Select supplier</span>
-          </button>
-
-          <div class="custom-options">
-            <div class="custom-option" data-value="">No supplier selected</div>
-            {% for supplier in suppliers %}
-              <div class="custom-option" data-value="{{ supplier[0] }}">{{ supplier[1] }}</div>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="quantity">Quantity</label>
-        <input type="number" step="0.01" id="quantity" name="quantity" required>
-      </div>
-
-      <div class="form-group">
-        <label for="unit">Unit</label>
-        <input type="text" id="unit" name="unit" required>
-      </div>
-
-      <div class="form-group">
-        <label for="priority">Priority</label>
-        <div class="custom-select" data-select>
-          <input type="hidden" name="priority" id="priority" value="normal">
-          <button type="button" class="custom-select-trigger">
-            <span>Normal</span>
-          </button>
-
-          <div class="custom-options">
-            <div class="custom-option" data-value="low">Low</div>
-            <div class="custom-option selected" data-value="normal">Normal</div>
-            <div class="custom-option" data-value="high">High</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label for="needed_by">Needed By</label>
-        <input type="date" id="needed_by" name="needed_by">
-      </div>
-
-      <div class="procurement-grid-spacer"></div>
+    <!-- TITLE -->
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" name="title" placeholder="Request title..." required>
     </div>
 
-    <div class="procurement-form-section">
-      <div class="form-group">
-        <label for="description">Description</label>
-        <textarea id="description" name="description" rows="4"></textarea>
-      </div>
+    <!-- ITEM -->
+    <div class="form-group">
+      <label>Item (optional)</label>
+      <select name="item_id" class="custom-select">
+        <option value="">Select item</option>
+        {% for i in items %}
+          <option value="{{ i[0] }}">
+            {{ i[1] }} ({{ i[2] }})
+          </option>
+        {% endfor %}
+      </select>
     </div>
 
-    <div class="procurement-form-section">
-      <div class="form-group">
-        <label for="notes">Internal Notes</label>
-        <textarea id="notes" name="notes" rows="4"></textarea>
-      </div>
+    <!-- SUPPLIER -->
+    <div class="form-group">
+      <label>Supplier</label>
+      <select name="supplier_id" class="custom-select">
+        <option value="">Select supplier</option>
+        {% for s in suppliers %}
+          <option value="{{ s[0] }}">{{ s[1] }}</option>
+        {% endfor %}
+      </select>
     </div>
 
-    <div class="form-actions procurement-form-actions">
-      <a href="{{ url_for('purchase_requests') }}" class="dashboard-btn secondary">Cancel</a>
-      <button type="submit" class="dashboard-btn primary">Create Request</button>
+    <!-- QUANTITY -->
+    <div class="form-group">
+      <label>Quantity</label>
+      <input type="number" step="0.01" name="quantity" required>
     </div>
+
+    <!-- UNIT -->
+    <div class="form-group">
+      <label>Unit</label>
+      <input type="text" name="unit" placeholder="pcs / kg / m²" required>
+    </div>
+
+    <!-- PRIORITY -->
+    <div class="form-group">
+      <label>Priority</label>
+      <select name="priority" class="custom-select">
+        <option value="low">Low</option>
+        <option value="normal" selected>Normal</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+
+    <!-- NEEDED BY -->
+    <div class="form-group">
+      <label>Needed By</label>
+      <input type="date" name="needed_by">
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="form-group full-width">
+      <label>Description</label>
+      <textarea name="description" rows="3"></textarea>
+    </div>
+
+    <!-- NOTES -->
+    <div class="form-group full-width">
+      <label>Notes</label>
+      <textarea name="notes" rows="3"></textarea>
+    </div>
+
+    <!-- SUBMIT -->
+    <div class="form-actions full-width">
+      <button type="submit" class="dashboard-btn primary">
+        Create Request
+      </button>
+    </div>
+
   </form>
+
 </div>
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  const itemSelect = document.querySelector('#item_id')?.closest('.custom-select');
-  const supplierSelect = document.querySelector('#supplier_id')?.closest('.custom-select');
-  const unitInput = document.getElementById('unit');
-
-  if (!itemSelect || !supplierSelect || !unitInput) return;
-
-  const itemOptions = itemSelect.querySelectorAll('.custom-option');
-  const supplierOptions = supplierSelect.querySelectorAll('.custom-option');
-  const supplierHidden = document.getElementById('supplier_id');
-  const supplierTriggerText = supplierSelect.querySelector('.custom-select-trigger span');
-
-  function setSupplierById(supplierId) {
-    let matched = false;
-
-    supplierOptions.forEach(option => {
-      const isSelected = option.dataset.value === String(supplierId || "");
-      option.classList.toggle("selected", isSelected);
-
-      if (isSelected) {
-        supplierHidden.value = option.dataset.value || "";
-        supplierTriggerText.textContent = option.textContent.trim();
-        matched = true;
-      }
-    });
-
-    if (!matched && !supplierId) {
-      const emptyOption = Array.from(supplierOptions).find(opt => opt.dataset.value === "");
-      if (emptyOption) {
-        supplierHidden.value = "";
-        supplierTriggerText.textContent = emptyOption.textContent.trim();
-        emptyOption.classList.add("selected");
-      }
-    }
-  }
-
-  itemOptions.forEach(option => {
-    option.addEventListener('click', function () {
-      const supplierId = option.dataset.supplierId || "";
-      const unit = option.dataset.unit || "";
-
-      if (supplierId) {
-        setSupplierById(supplierId);
-      }
-
-      if (unit && !unitInput.value.trim()) {
-        unitInput.value = unit;
-      }
-    });
-  });
-});
-</script>
 {% endblock %}
