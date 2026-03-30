@@ -1871,7 +1871,7 @@ def fetch_purchase_request_export_rows(company_id, args, history=False):
             COALESCE(i.item_name, ''),
             COALESCE(s.name, ''),
             pr.quantity,
-            COALESCE(i.unit, pr.unit, ''),
+            COALESCE(i.unit, ''),
             COALESCE(pr.priority, 'normal'),
             COALESCE(pr.status, 'draft'),
             COALESCE(pr.needed_by, ''),
@@ -8141,33 +8141,41 @@ def users():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id, full_name, email, role, COALESCE(is_active, 1)
+        SELECT
+            id,
+            full_name,
+            email,
+            COALESCE(role, 'worker') AS role,
+            COALESCE(is_active, 1) AS is_active,
+            created_at
         FROM users
         WHERE company_id = ?
-        ORDER BY id ASC
+        ORDER BY created_at DESC, id DESC
     """, (company_id,))
     rows = cursor.fetchall()
-    conn.close()
 
-    users = []
+    users_list = []
     for row in rows:
         user_id = row[0]
-        role = row[3] or "worker"
-        effective_permissions = get_effective_permissions(user_id=user_id, role=role)
+        role = (row[3] or "worker").lower()
 
-        users.append({
+        users_list.append({
             "id": user_id,
             "full_name": row[1],
             "email": row[2],
             "role": role,
             "is_active": int(row[4] or 0),
-            "permissions": sorted(effective_permissions),
+            "created_at": row[5],
+            "permissions": sorted(get_effective_permissions(user_id=user_id, company_id=company_id)),
         })
+
+    conn.close()
 
     return render_template(
         "users.html",
-        users=users,
-        permission_keys=ALL_PERMISSION_KEYS,
+        users=users_list,
+        role_defaults=ROLE_DEFAULT_PERMISSIONS,
+        all_permission_keys=ALL_PERMISSION_KEYS,
         active_page="users"
     )
 
@@ -8695,7 +8703,7 @@ def purchase_requests():
             COALESCE(pr.title, COALESCE(i.item_name, '')) AS title,
             COALESCE(pr.description, '') AS description,
             pr.quantity,
-            COALESCE(i.unit, pr.unit, '') AS unit,
+            COALESCE(i.unit, '') AS unit,
             COALESCE(pr.status, 'draft') AS status,
             COALESCE(pr.priority, 'normal') AS priority,
             pr.created_at,
